@@ -1,40 +1,36 @@
 #pragma once
 
-#define GLFW_INCLUDE_VULKAN
-#include <GLFW/glfw3.h>
-#include <vector>
+class Device;
+class SwapChain;
+class Pipeline;
+class Scene;
 
 class Renderer {
 public:
-    Renderer();
+    Renderer(const Device*, const SwapChain*, const Pipeline*);
     ~Renderer();
+    Renderer(const Renderer&) = delete;
+    Renderer(Renderer&&) = delete;
+    Renderer& operator=(const Renderer&) = delete;
+    Renderer& operator=(Renderer&&) = delete;
 
 public:
-    void Run();
+    void DrawFrame(const Scene*);
 
 private:
-    void InitWindow();
-    void InitVulkan();
-    void CreateInstance();
-    std::vector<const char*> GetRequiredExtensions();
-    bool CheckValidationLayerSupport();
-    void SetupDebugMessenger();
+    void CreateFrameBuffers();
+    void CreateSyncObjects();
+    void RecordCommandBuffer(VkCommandBuffer, uint32_t imageIndex, const Scene*);
 
 private:
-    VkDebugUtilsMessengerEXT debugMessenger;
-    VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkDebugUtilsMessengerEXT* pDebugMessenger);
-    void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT debugMessenger, const VkAllocationCallbacks* pAllocator);
-    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
+    const Device* p_device;
+    const SwapChain* p_swapChain;
+    const Pipeline* p_pipeline;
 
 private:
-    GLFWwindow* m_window;
-    VkInstance m_instance;
-    std::vector<const char*> m_layers { "VK_LAYER_KHRONOS_validation" };
-
-private:
-#ifdef NDEBUG
-    const bool enableValidationLayers = false;
-#else
-    const bool enableValidationLayers = true;
-#endif
+    VkClearValue m_clearColor { 0.5f, 0.5f, 0.5f, 1.0f };
+    std::vector<VkFramebuffer> m_frameBuffers;
+    VkSemaphore imageAvailableSemaphore;
+    VkSemaphore renderFinishedSemaphore;
+    VkFence inFlightFence;
 };

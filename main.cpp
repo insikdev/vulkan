@@ -1,11 +1,11 @@
-#pragma comment(lib, "glfw3.lib")
-#pragma comment(lib, "vulkan-1.lib")
-
-#include "renderer.h"
+#include "pch.h"
+#include "app.h"
 
 int main()
 {
-    Renderer renderer;
-    renderer.Run();
+    App* app = new App {};
+    app->Run();
+    delete app;
+
     return 0;
 }
