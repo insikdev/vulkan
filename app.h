@@ -2,6 +2,7 @@
 
 class Window;
 class Instance;
+class Surface;
 class Device;
 class SwapChain;
 class Pipeline;
@@ -15,10 +16,12 @@ public:
 
 public:
     void Run();
+    void SetResizedTrue() { m_resized = true; }
 
 private:
     void SetupDebugMessenger();
     void CalculateFrameRate();
+    void HandleResize();
 
 private:
     std::vector<const char*> m_requiredLayers { "VK_LAYER_KHRONOS_validation" };
@@ -36,6 +39,7 @@ private:
 private:
     Window* p_window;
     Instance* p_instance;
+    Surface* p_surface;
     Device* p_device;
     SwapChain* p_swapChain;
     Pipeline* p_pipeline;
@@ -47,4 +51,5 @@ private:
     double currentTime {};
     int numFrames {};
     float frameTime {};
+    bool m_resized { false };
 };

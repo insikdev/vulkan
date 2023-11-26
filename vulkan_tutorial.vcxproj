@@ -156,6 +156,7 @@
     <ClCompile Include="pipeline.cpp" />
     <ClCompile Include="renderer.cpp" />
     <ClCompile Include="scene.cpp" />
+    <ClCompile Include="surface.cpp" />
     <ClCompile Include="swap_chain.cpp" />
     <ClCompile Include="window.cpp" />
   </ItemGroup>
@@ -177,6 +178,7 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="pipeline.h" />
     <ClInclude Include="renderer.h" />
+    <ClInclude Include="surface.h" />
     <ClInclude Include="swap_chain.h" />
     <ClInclude Include="shader.h" />
     <ClInclude Include="window.h" />

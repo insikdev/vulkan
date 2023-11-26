@@ -79,7 +79,7 @@ std::vector<ExtensionInfo> Extension::GetAvailableDeviceExtensions(VkPhysicalDev
     return extensions;
 }
 
-void Extension::PrintExtensionInfos(std::vector<ExtensionInfo>& extensionInfos)
+void Extension::PrintExtensionInfos(const std::vector<ExtensionInfo>& extensionInfos)
 {
     std::cout << "Supported Extension Info\n";
 

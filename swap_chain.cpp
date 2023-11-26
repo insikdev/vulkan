@@ -1,112 +1,160 @@
 #include "pch.h"
 #include "swap_chain.h"
 #include "window.h"
-#include "instance.h"
+#include "surface.h"
 #include "device.h"
+#include <algorithm>
 
-SwapChain::SwapChain(const Window* pWindow, const Instance* pInstance, const Device* pDevice)
+SwapChain::SwapChain(const Window* pWindow, const Surface* pSurface, const Device* pDevice)
     : p_window { pWindow }
-    , p_instance { pInstance }
+    , p_surface { pSurface }
     , p_device { pDevice }
 {
-    CreateSurface();
-    const auto& formats = GetSurfaceFormats();
-    SelectAppropriateSurfaceFormat(formats);
+    SelectSurfaceFormat();
     SelectPresentMode();
+    SelectCapabilities();
     CreateSwapChain();
     CreateImageViews();
 }
 
 SwapChain::~SwapChain()
 {
+    /*
+     * VkImage will be implicitly destroyed when the VkSwapchainKHR is destroyed.
+     */
     for (auto imageView : m_imageViews) {
         vkDestroyImageView(p_device->GetDevice(), imageView, nullptr);
     }
     vkDestroySwapchainKHR(p_device->GetDevice(), m_swapChain, nullptr);
-    vkDestroySurfaceKHR(p_instance->GetInstance(), m_surface, nullptr);
 }
 
-void SwapChain::CreateSurface()
-{
-    VkResult result = glfwCreateWindowSurface(p_instance->GetInstance(), p_window->GetWindow(), nullptr, &m_surface);
-    CHECK_VK(result);
-}
-
-std::vector<VkSurfaceFormatKHR> SwapChain::GetSurfaceFormats()
+std::vector<VkSurfaceFormatKHR> SwapChain::GetSurfaceFormats(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface)
 {
     VkResult result;
 
     uint32_t count = 0;
     std::vector<VkSurfaceFormatKHR> formats;
 
-    result = vkGetPhysicalDeviceSurfaceFormatsKHR(p_device->GetPhysicalDevice(), m_surface, &count, nullptr);
+    result = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &count, nullptr);
     CHECK_VK(result);
     assert(count != 0);
 
     formats.resize(count);
-    result = vkGetPhysicalDeviceSurfaceFormatsKHR(p_device->GetPhysicalDevice(), m_surface, &count, formats.data());
+    result = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &count, formats.data());
     CHECK_VK(result);
 
     return formats;
 }
 
-void SwapChain::SelectAppropriateSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& surfaceFormats)
+std::vector<VkPresentModeKHR> SwapChain::GetPresentModes(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface)
 {
-    m_format = surfaceFormats[0];
-}
-
-void SwapChain::SelectPresentMode()
-{
-    // m_presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
-    // return;
-
     VkResult result;
 
     uint32_t count;
     std::vector<VkPresentModeKHR> presentModes;
 
-    result = vkGetPhysicalDeviceSurfacePresentModesKHR(p_device->GetPhysicalDevice(), m_surface, &count, nullptr);
+    result = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &count, nullptr);
     CHECK_VK(result);
     assert(count != 0);
 
     presentModes.resize(count);
-    result = vkGetPhysicalDeviceSurfacePresentModesKHR(p_device->GetPhysicalDevice(), m_surface, &count, presentModes.data());
+    result = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &count, presentModes.data());
     CHECK_VK(result);
+
+    return presentModes;
+}
+
+void SwapChain::SelectSurfaceFormat()
+{
+    const auto& availableFormats = SwapChain::GetSurfaceFormats(p_device->GetPhysicalDevice(), p_surface->GetSurface());
+
+    for (const auto& availableFormat : availableFormats) {
+        if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+            m_surfaceFormat = availableFormat;
+            return;
+        }
+    }
+
+    m_surfaceFormat = availableFormats[0];
+}
+
+void SwapChain::SelectPresentMode()
+{
+    const auto& presentModes = SwapChain::GetPresentModes(p_device->GetPhysicalDevice(), p_surface->GetSurface());
 
     for (const auto& mode : presentModes) {
         if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
             m_presentMode = mode;
-            break;
+            return;
         }
     }
+
+    m_presentMode = VK_PRESENT_MODE_FIFO_KHR;
+}
+
+void SwapChain::SelectCapabilities()
+{
+    VkSurfaceCapabilitiesKHR capabilities {};
+
+    VkResult result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(p_device->GetPhysicalDevice(), p_surface->GetSurface(), &capabilities);
+    CHECK_VK(result);
+
+    if (capabilities.currentExtent.width != std::numeric_limits<uint32_t>::max()) {
+        m_extent = capabilities.currentExtent;
+    } else {
+        int width, height;
+        glfwGetFramebufferSize(p_window->GetWindow(), &width, &height);
+
+        VkExtent2D actualExtent = { static_cast<uint32_t>(width), static_cast<uint32_t>(height) };
+
+        actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+        actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+
+        m_extent = actualExtent;
+    }
+
+    m_imageCount = capabilities.minImageCount + 1;
+    if (capabilities.maxImageCount > 0 && m_imageCount > capabilities.maxImageCount) {
+        m_imageCount = capabilities.maxImageCount;
+    }
+
+    m_currentTransform = capabilities.currentTransform;
 }
 
 void SwapChain::CreateSwapChain()
 {
     VkResult result;
 
-    VkSurfaceCapabilitiesKHR capabilities;
-    {
-        result = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(p_device->GetPhysicalDevice(), m_surface, &capabilities);
-        CHECK_VK(result);
-        m_extent = capabilities.currentExtent;
-    }
+    QueueFamilyIndices indices = Device::FindQueueFamilies(p_device->GetPhysicalDevice(), p_surface->GetSurface());
+    uint32_t queueFamilyIndices[] = { indices.graphicsFamily, indices.presentFamily };
+    assert(indices.isComplete());
 
     VkSwapchainCreateInfoKHR createInfo {};
-    createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    createInfo.surface = m_surface;
-    createInfo.minImageCount = capabilities.minImageCount + 1;
-    createInfo.imageFormat = m_format.format;
-    createInfo.imageColorSpace = m_format.colorSpace;
-    createInfo.imageExtent = m_extent;
-    createInfo.imageArrayLayers = 1;
-    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
-    createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    createInfo.preTransform = capabilities.currentTransform;
-    createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    createInfo.presentMode = m_presentMode;
-    createInfo.clipped = VK_TRUE;
-    createInfo.oldSwapchain = VK_NULL_HANDLE;
+    {
+        createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+        createInfo.surface = p_surface->GetSurface();
+        createInfo.minImageCount = m_imageCount;
+        createInfo.imageFormat = m_surfaceFormat.format;
+        createInfo.imageColorSpace = m_surfaceFormat.colorSpace;
+        createInfo.imageExtent = m_extent;
+        createInfo.imageArrayLayers = 1;
+        createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        createInfo.preTransform = m_currentTransform;
+        createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+        createInfo.presentMode = m_presentMode;
+        createInfo.clipped = VK_TRUE;
+        createInfo.oldSwapchain = VK_NULL_HANDLE;
+
+        if (indices.graphicsFamily != indices.presentFamily) {
+            createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+            createInfo.queueFamilyIndexCount = 2;
+            createInfo.pQueueFamilyIndices = queueFamilyIndices;
+        } else {
+            createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+            createInfo.queueFamilyIndexCount = 0;
+            createInfo.pQueueFamilyIndices = nullptr;
+        }
+    }
 
     result = vkCreateSwapchainKHR(p_device->GetDevice(), &createInfo, nullptr, &m_swapChain);
     CHECK_VK(result);
@@ -134,7 +182,7 @@ void SwapChain::CreateImageViews()
         createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
         createInfo.image = images[i];
         createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-        createInfo.format = m_format.format;
+        createInfo.format = m_surfaceFormat.format;
         createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
         createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
         createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;

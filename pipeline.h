@@ -1,7 +1,5 @@
 #pragma once
 
-#include "pch.h"
-
 class Device;
 class SwapChain;
 
@@ -13,6 +11,9 @@ public:
     Pipeline(Pipeline&&) = delete;
     Pipeline& operator=(const Pipeline&) = delete;
     Pipeline& operator=(Pipeline&&) = delete;
+
+public:
+    void UpdateSwapChain(const SwapChain*);
 
 public: // getter
     inline VkPipelineLayout GetPipelineLayout() const { return m_layout; }

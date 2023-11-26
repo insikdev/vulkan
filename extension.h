@@ -9,7 +9,7 @@ class Extension {
 public:
     static std::vector<ExtensionInfo> GetAvailableInstanceExtensions(void);
     static std::vector<ExtensionInfo> GetAvailableDeviceExtensions(VkPhysicalDevice);
-    static void PrintExtensionInfos(std::vector<ExtensionInfo>&);
+    static void PrintExtensionInfos(const std::vector<ExtensionInfo>&);
 
     // debug messenger
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);

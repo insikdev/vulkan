@@ -2,6 +2,7 @@
 #include "app.h"
 #include "window.h"
 #include "instance.h"
+#include "surface.h"
 #include "device.h"
 #include "swap_chain.h"
 #include "pipeline.h"
@@ -15,10 +16,11 @@
 
 App::App()
 {
-    p_window = new Window { "vulkan_tutorial" };
+    p_window = new Window { "vulkan_tutorial", this };
     p_instance = new Instance { m_requiredLayers, m_requiredLayerExtensions };
-    p_device = new Device { p_instance, m_requiredDeviceExtensions };
-    p_swapChain = new SwapChain { p_window, p_instance, p_device };
+    p_surface = new Surface { p_window, p_instance };
+    p_device = new Device { p_instance, p_surface, m_requiredDeviceExtensions };
+    p_swapChain = new SwapChain { p_window, p_surface, p_device };
     p_pipeline = new Pipeline { p_device, p_swapChain };
     p_renderer = new Renderer { p_device, p_swapChain, p_pipeline };
 
@@ -40,6 +42,7 @@ App::~App()
     delete p_pipeline;
     delete p_swapChain;
     delete p_device;
+    delete p_surface;
     delete p_instance;
     delete p_window;
 }
@@ -47,9 +50,13 @@ App::~App()
 void App::Run()
 {
     while (!p_window->ShouldClose()) {
-        glfwPollEvents();
-        p_renderer->DrawFrame(p_scene);
-        CalculateFrameRate();
+        if (m_resized) {
+            HandleResize();
+        } else {
+            glfwPollEvents();
+            p_renderer->DrawFrame(p_scene);
+            CalculateFrameRate();
+        }
     }
 
     vkDeviceWaitIdle(p_device->GetDevice());
@@ -80,4 +87,28 @@ void App::CalculateFrameRate()
     }
 
     ++numFrames;
+}
+
+void App::HandleResize()
+{
+    int width = 0;
+    int height = 0;
+    glfwGetFramebufferSize(p_window->GetWindow(), &width, &height);
+
+    while (width == 0 || height == 0) {
+        glfwGetFramebufferSize(p_window->GetWindow(), &width, &height);
+        glfwWaitEvents();
+    }
+
+    vkDeviceWaitIdle(p_device->GetDevice());
+
+    p_window->SetWidth(width);
+    p_window->SetHeight(height);
+
+    delete p_swapChain;
+    p_swapChain = new SwapChain { p_window, p_surface, p_device };
+    p_pipeline->UpdateSwapChain(p_swapChain);
+    p_renderer->UpdateSwapChain(p_swapChain);
+
+    m_resized = false;
 }

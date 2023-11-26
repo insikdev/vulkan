@@ -16,10 +16,12 @@ public:
 
 public:
     void DrawFrame(const Scene*);
+    void UpdateSwapChain(const SwapChain*);
 
 private:
     void CreateFrameBuffers();
     void CreateSyncObjects();
+    void CreateCommandBuffers();
     void RecordCommandBuffer(VkCommandBuffer, uint32_t imageIndex, const Scene*);
 
 private:
@@ -28,9 +30,14 @@ private:
     const Pipeline* p_pipeline;
 
 private:
-    VkClearValue m_clearColor { 0.5f, 0.5f, 0.5f, 1.0f };
+    enum { MAX_FRAMES_IN_FLIGHT = 2 };
+
+private:
+    VkClearValue m_clearColor { 0.0f, 0.0f, 0.0f, 1.0f };
     std::vector<VkFramebuffer> m_frameBuffers;
-    VkSemaphore imageAvailableSemaphore;
-    VkSemaphore renderFinishedSemaphore;
-    VkFence inFlightFence;
+    std::vector<VkCommandBuffer> m_commandBuffers { MAX_FRAMES_IN_FLIGHT };
+    std::vector<VkSemaphore> imageAvailableSemaphores { MAX_FRAMES_IN_FLIGHT };
+    std::vector<VkSemaphore> renderFinishedSemaphores { MAX_FRAMES_IN_FLIGHT };
+    std::vector<VkFence> inFlightFences { MAX_FRAMES_IN_FLIGHT };
+    uint32_t m_currentFrame {};
 };

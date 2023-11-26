@@ -1,10 +1,18 @@
 #pragma once
 
 class Instance;
+class Surface;
+
+struct QueueFamilyIndices {
+    uint32_t graphicsFamily = UINT32_MAX;
+    uint32_t presentFamily = UINT32_MAX;
+
+    bool isComplete() { return graphicsFamily != UINT32_MAX && presentFamily != UINT32_MAX; }
+};
 
 class Device {
 public:
-    Device(const Instance*, const std::vector<const char*>& extensions);
+    Device(const Instance*, const Surface*, const std::vector<const char*>& extensions);
     ~Device();
     Device(const Device&) = delete;
     Device(Device&&) = delete;
@@ -12,33 +20,42 @@ public:
     Device& operator=(Device&&) = delete;
 
 public:
+    void CreateCommandBuffer(VkCommandBuffer&) const;
     void CreateBuffer(VkDeviceSize, VkBufferUsageFlags, VkMemoryPropertyFlags, VkBuffer&, VkDeviceMemory&) const;
+    void CreateCommandBuffers(std::vector<VkCommandBuffer>& commandBuffers) const;
+
+public:
+    static std::vector<VkQueueFamilyProperties> GetQueueFamilies(VkPhysicalDevice);
+    static QueueFamilyIndices FindQueueFamilies(VkPhysicalDevice, VkSurfaceKHR);
 
 public: // getter
     inline VkPhysicalDevice GetPhysicalDevice() const { return m_physicalDevice; }
     inline VkDevice GetDevice() const { return m_device; }
-    inline VkQueue GetQueue() const { return m_queue; }
+    inline VkQueue GetQueue() const { return m_graphicsQueue; }
+    inline VkQueue GetPresentQueue() const { return m_presentQueue; }
     inline VkCommandPool GetCommandPool() const { return m_commandPool; }
-    inline VkCommandBuffer GetCommandBuffer() const { return m_commandBuffer; }
+
+private:
+    void SelectPhysicalDevice();
+    void CreateLogicalDevice();
+    void CreateCommandPool();
 
 private:
     std::vector<VkPhysicalDevice> EnumeratePhysicalDevices();
-    void SelectAppropriatePhysicalDevice(const std::vector<VkPhysicalDevice>&);
-    std::vector<VkQueueFamilyProperties> GetQueueFamilies();
-    void SelectAppropriateQueueFamily(const std::vector<VkQueueFamilyProperties>&);
-    void CreateLogicalDeviceAndQueue(const std::vector<const char*>&);
-    void CreateCommandPool();
-    void CreateCommandBuffer();
+    bool IsDeviceSuitable(VkPhysicalDevice);
+    bool CheckDeviceExtensionSupport(VkPhysicalDevice);
     uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags) const;
 
 private:
     const Instance* p_instance;
+    const Surface* p_surface;
 
 private:
     VkPhysicalDevice m_physicalDevice;
     VkDevice m_device;
-    uint32_t m_graphicsQueueIndex { UINT32_MAX };
-    VkQueue m_queue;
+    QueueFamilyIndices m_queueFamilyIndices;
+    VkQueue m_graphicsQueue;
+    VkQueue m_presentQueue;
     VkCommandPool m_commandPool;
-    VkCommandBuffer m_commandBuffer;
+    std::vector<const char*> m_requiredExtensions;
 };
