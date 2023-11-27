@@ -144,6 +144,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="app.cpp" />
+    <ClCompile Include="camera.cpp" />
+    <ClCompile Include="descriptor_helper.cpp" />
     <ClCompile Include="device.cpp" />
     <ClCompile Include="extension.cpp" />
     <ClCompile Include="instance.cpp" />
@@ -169,6 +171,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="app.h" />
+    <ClInclude Include="camera.h" />
+    <ClInclude Include="descriptor_helper.h" />
     <ClInclude Include="device.h" />
     <ClInclude Include="extension.h" />
     <ClInclude Include="geometry_helper.h" />

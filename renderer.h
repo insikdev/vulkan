@@ -4,6 +4,7 @@ class Device;
 class SwapChain;
 class Pipeline;
 class Scene;
+class DescriptorHelper;
 
 class Renderer {
 public:
@@ -19,6 +20,9 @@ public:
     void UpdateSwapChain(const SwapChain*);
 
 private:
+    void createDescriptorSets();
+    void createDescriptorPool();
+    void createUniformBuffers();
     void CreateFrameBuffers();
     void CreateSyncObjects();
     void CreateCommandBuffers();
@@ -28,6 +32,7 @@ private:
     const Device* p_device;
     const SwapChain* p_swapChain;
     const Pipeline* p_pipeline;
+    const DescriptorHelper* p_descriptor;
 
 private:
     enum { MAX_FRAMES_IN_FLIGHT = 2 };
@@ -40,4 +45,12 @@ private:
     std::vector<VkSemaphore> renderFinishedSemaphores { MAX_FRAMES_IN_FLIGHT };
     std::vector<VkFence> inFlightFences { MAX_FRAMES_IN_FLIGHT };
     uint32_t m_currentFrame {};
+
+private:
+    std::vector<VkBuffer> uniformBuffers;
+    std::vector<VkDeviceMemory> uniformBuffersMemory;
+    std::vector<void*> uniformBuffersMapped;
+
+private:
+    std::vector<VkDescriptorSet> descriptorSets;
 };

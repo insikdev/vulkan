@@ -24,20 +24,6 @@ Device::~Device()
     vkDestroyDevice(m_device, nullptr);
 }
 
-// void Device::CreateCommandBuffer(VkCommandBuffer& commandBuffer) const
-//{
-//     VkCommandBufferAllocateInfo allocInfo {};
-//     {
-//         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-//         allocInfo.commandPool = m_commandPool;
-//         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-//         allocInfo.commandBufferCount = 1;
-//     }
-//
-//     VkResult result = vkAllocateCommandBuffers(m_device, &allocInfo, &commandBuffer);
-//     CHECK_VK(result);
-// }
-
 void Device::CreateCommandBuffers(std::vector<VkCommandBuffer>& commandBuffers) const
 {
     VkCommandBufferAllocateInfo allocInfo {};

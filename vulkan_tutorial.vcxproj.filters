@@ -8,6 +8,12 @@
     <Filter Include="shaders">
       <UniqueIdentifier>{3386dfb9-5a2f-49c5-be06-ccd932e305e4}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\helper">
+      <UniqueIdentifier>{39907a36-7e78-4baa-8bf9-20403baee252}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\core">
+      <UniqueIdentifier>{1c2f6bdc-4fc4-4c32-a888-b1686e2c6fbc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -22,21 +28,6 @@
     <ClCompile Include="app.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="instance.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="device.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="window.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="swap_chain.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="pipeline.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="renderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -49,6 +40,27 @@
     <ClCompile Include="surface.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="camera.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="descriptor_helper.cpp">
+      <Filter>Source Files\helper</Filter>
+    </ClCompile>
+    <ClCompile Include="device.cpp">
+      <Filter>Source Files\core</Filter>
+    </ClCompile>
+    <ClCompile Include="instance.cpp">
+      <Filter>Source Files\core</Filter>
+    </ClCompile>
+    <ClCompile Include="pipeline.cpp">
+      <Filter>Source Files\core</Filter>
+    </ClCompile>
+    <ClCompile Include="swap_chain.cpp">
+      <Filter>Source Files\core</Filter>
+    </ClCompile>
+    <ClCompile Include="window.cpp">
+      <Filter>Source Files\core</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include=".clang-format" />
@@ -58,14 +70,13 @@
     <None Include="shaders\simple.vert">
       <Filter>shaders</Filter>
     </None>
-    <None Include="compile.bat" />
     <None Include=".gitignore" />
+    <None Include="compile.bat">
+      <Filter>Source Files</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="app.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="device.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="extension.h">
@@ -74,16 +85,10 @@
     <ClInclude Include="geometry_helper.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="instance.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="model.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="pch.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="pipeline.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="renderer.h">
@@ -92,17 +97,30 @@
     <ClInclude Include="shader.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="swap_chain.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="window.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="scene.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="surface.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="camera.h" />
+    <ClInclude Include="descriptor_helper.h">
+      <Filter>Source Files\helper</Filter>
+    </ClInclude>
+    <ClInclude Include="device.h">
+      <Filter>Source Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="instance.h">
+      <Filter>Source Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="pipeline.h">
+      <Filter>Source Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="swap_chain.h">
+      <Filter>Source Files\core</Filter>
+    </ClInclude>
+    <ClInclude Include="window.h">
+      <Filter>Source Files\core</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

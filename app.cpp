@@ -21,16 +21,16 @@ App::App()
     p_surface = new Surface { p_window, p_instance };
     p_device = new Device { p_instance, p_surface, m_requiredDeviceExtensions };
     p_swapChain = new SwapChain { p_window, p_surface, p_device };
+
     p_pipeline = new Pipeline { p_device, p_swapChain };
     p_renderer = new Renderer { p_device, p_swapChain, p_pipeline };
 
     SetupDebugMessenger();
 
     p_scene = new Scene {};
-    Model* model1 = new Model(p_device, Geometry::CreateTriangle());
-    Model* model2 = new Model(p_device, Geometry::CreateRectangle());
-    p_scene->AddModel(model1);
-    p_scene->AddModel(model2);
+
+    p_scene->AddModel(new Model(p_device, Geometry::CreateTriangle()));
+    p_scene->AddModel(new Model(p_device, Geometry::CreateRectangle()));
 }
 
 App::~App()

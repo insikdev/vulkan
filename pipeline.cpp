@@ -8,6 +8,7 @@ Pipeline::Pipeline(const Device* pDevice, const SwapChain* pSwapChain)
     : p_device { pDevice }
     , p_swapChain { pSwapChain }
 {
+    CreateDescriptorSetLayout();
     CreatePipelineLayout();
     CreateRenderPass();
     CreatePipeline();
@@ -18,6 +19,10 @@ Pipeline::~Pipeline()
     vkDestroyPipeline(p_device->GetDevice(), m_pipeline, nullptr);
     vkDestroyRenderPass(p_device->GetDevice(), m_renderPass, nullptr);
     vkDestroyPipelineLayout(p_device->GetDevice(), m_layout, nullptr);
+
+    for (const auto& layout : m_descriptorSetLayouts) {
+        vkDestroyDescriptorSetLayout(p_device->GetDevice(), layout, nullptr);
+    }
 }
 
 void Pipeline::UpdateSwapChain(const SwapChain* pSwapChain)
@@ -27,13 +32,39 @@ void Pipeline::UpdateSwapChain(const SwapChain* pSwapChain)
     CreateRenderPass();
 }
 
+void Pipeline::CreateDescriptorSetLayout()
+{
+    VkDescriptorSetLayoutBinding layoutBinding {};
+    {
+        layoutBinding.binding = 0;
+        layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        layoutBinding.descriptorCount = 1;
+        layoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+    }
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo {};
+    {
+        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layoutInfo.bindingCount = 1;
+        layoutInfo.pBindings = &layoutBinding;
+    }
+
+    VkDescriptorSetLayout setLayout;
+
+    VkResult result = vkCreateDescriptorSetLayout(p_device->GetDevice(), &layoutInfo, nullptr, &setLayout);
+    CHECK_VK(result);
+
+    m_descriptorSetLayouts.push_back(setLayout);
+}
+
 void Pipeline::CreatePipelineLayout()
 {
     VkPipelineLayoutCreateInfo createInfo {};
     {
         createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
         createInfo.pushConstantRangeCount = 0;
-        createInfo.setLayoutCount = 0;
+        createInfo.setLayoutCount = static_cast<uint32_t>(m_descriptorSetLayouts.size());
+        createInfo.pSetLayouts = m_descriptorSetLayouts.data();
     }
 
     VkResult result = vkCreatePipelineLayout(p_device->GetDevice(), &createInfo, nullptr, &m_layout);
