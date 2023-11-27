@@ -13,7 +13,6 @@ public:
 
 public: // getter
     inline VkBuffer GetVertexBuffer() const { return m_vertexBuffer; }
-    inline uint32_t GetVertexCount() const { return m_vertexCount; }
     inline VkBuffer GetIndexBuffer() const { return m_indexBuffer; }
     inline uint32_t GetIndexCount() const { return m_indexCount; }
 
@@ -26,7 +25,6 @@ private:
 
 private:
     uint32_t m_indexCount;
-    uint32_t m_vertexCount;
     VkBuffer m_indexBuffer;
     VkBuffer m_vertexBuffer;
     VkDeviceMemory m_indexBufferMemory;

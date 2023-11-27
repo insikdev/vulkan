@@ -20,9 +20,10 @@ public:
     Device& operator=(Device&&) = delete;
 
 public:
-    void CreateCommandBuffer(VkCommandBuffer&) const;
-    void CreateBuffer(VkDeviceSize, VkBufferUsageFlags, VkMemoryPropertyFlags, VkBuffer&, VkDeviceMemory&) const;
+    // void CreateCommandBuffer(VkCommandBuffer&) const;
     void CreateCommandBuffers(std::vector<VkCommandBuffer>& commandBuffers) const;
+    void CreateBuffer(VkDeviceSize, VkBufferUsageFlags, VkMemoryPropertyFlags, VkBuffer&, VkDeviceMemory&) const;
+    void CopyBuffer(VkBuffer, VkBuffer, VkDeviceSize) const;
 
 public:
     static std::vector<VkQueueFamilyProperties> GetQueueFamilies(VkPhysicalDevice);

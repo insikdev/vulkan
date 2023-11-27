@@ -24,19 +24,19 @@ Device::~Device()
     vkDestroyDevice(m_device, nullptr);
 }
 
-void Device::CreateCommandBuffer(VkCommandBuffer& commandBuffer) const
-{
-    VkCommandBufferAllocateInfo allocInfo {};
-    {
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = m_commandPool;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = 1;
-    }
-
-    VkResult result = vkAllocateCommandBuffers(m_device, &allocInfo, &commandBuffer);
-    CHECK_VK(result);
-}
+// void Device::CreateCommandBuffer(VkCommandBuffer& commandBuffer) const
+//{
+//     VkCommandBufferAllocateInfo allocInfo {};
+//     {
+//         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+//         allocInfo.commandPool = m_commandPool;
+//         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+//         allocInfo.commandBufferCount = 1;
+//     }
+//
+//     VkResult result = vkAllocateCommandBuffers(m_device, &allocInfo, &commandBuffer);
+//     CHECK_VK(result);
+// }
 
 void Device::CreateCommandBuffers(std::vector<VkCommandBuffer>& commandBuffers) const
 {
@@ -54,29 +54,74 @@ void Device::CreateCommandBuffers(std::vector<VkCommandBuffer>& commandBuffers) 
 
 void Device::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& deviceMemory) const
 {
-    VkResult result;
-
     VkBufferCreateInfo bufferInfo {};
-    bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    bufferInfo.size = size;
-    bufferInfo.usage = usage;
-    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    {
+        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+        bufferInfo.size = size;
+        bufferInfo.usage = usage;
+        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    }
 
-    result = vkCreateBuffer(m_device, &bufferInfo, nullptr, &buffer);
+    VkResult result = vkCreateBuffer(m_device, &bufferInfo, nullptr, &buffer);
     CHECK_VK(result);
 
-    VkMemoryRequirements memRequirements;
+    VkMemoryRequirements memRequirements {};
     vkGetBufferMemoryRequirements(m_device, buffer, &memRequirements);
 
     VkMemoryAllocateInfo allocInfo {};
-    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-    allocInfo.allocationSize = memRequirements.size;
-    allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
+    {
+        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+        allocInfo.allocationSize = memRequirements.size;
+        allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
+    }
 
     result = vkAllocateMemory(m_device, &allocInfo, nullptr, &deviceMemory);
     CHECK_VK(result);
 
     vkBindBufferMemory(m_device, buffer, deviceMemory, 0);
+}
+
+void Device::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) const
+{
+    VkCommandBufferAllocateInfo allocInfo {};
+    {
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandPool = m_commandPool;
+        allocInfo.commandBufferCount = 1;
+    }
+
+    VkCommandBuffer commandBuffer;
+    vkAllocateCommandBuffers(m_device, &allocInfo, &commandBuffer);
+
+    VkCommandBufferBeginInfo beginInfo {};
+    {
+        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    }
+
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+
+    VkBufferCopy copyRegion {};
+    {
+        copyRegion.srcOffset = 0;
+        copyRegion.dstOffset = 0;
+        copyRegion.size = size;
+    }
+
+    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
+    vkEndCommandBuffer(commandBuffer);
+
+    VkSubmitInfo submitInfo {};
+    {
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = &commandBuffer;
+    }
+
+    vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
+    vkQueueWaitIdle(m_graphicsQueue);
+    vkFreeCommandBuffers(m_device, m_commandPool, 1, &commandBuffer);
 }
 
 QueueFamilyIndices Device::FindQueueFamilies(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface)
@@ -121,7 +166,6 @@ void Device::SelectPhysicalDevice()
 
 void Device::CreateLogicalDevice()
 {
-    VkResult result;
     m_queueFamilyIndices = Device::FindQueueFamilies(m_physicalDevice, p_surface->GetSurface());
 
     std::set<uint32_t> uniqueQueueFamilies = { m_queueFamilyIndices.graphicsFamily, m_queueFamilyIndices.presentFamily };
@@ -149,7 +193,7 @@ void Device::CreateLogicalDevice()
         deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
     }
 
-    result = vkCreateDevice(m_physicalDevice, &deviceCreateInfo, nullptr, &m_device);
+    VkResult result = vkCreateDevice(m_physicalDevice, &deviceCreateInfo, nullptr, &m_device);
     CHECK_VK(result);
 
     vkGetDeviceQueue(m_device, m_queueFamilyIndices.graphicsFamily, 0, &m_graphicsQueue);
@@ -169,12 +213,10 @@ void Device::CreateCommandPool()
 
 std::vector<VkPhysicalDevice> Device::EnumeratePhysicalDevices()
 {
-    VkResult result;
-
     uint32_t count = 0;
     std::vector<VkPhysicalDevice> devices;
 
-    result = vkEnumeratePhysicalDevices(p_instance->GetInstance(), &count, nullptr);
+    VkResult result = vkEnumeratePhysicalDevices(p_instance->GetInstance(), &count, nullptr);
     CHECK_VK(result);
     assert(count != 0);
 
