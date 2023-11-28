@@ -34,19 +34,23 @@ void Pipeline::UpdateSwapChain(const SwapChain* pSwapChain)
 
 void Pipeline::CreateDescriptorSetLayout()
 {
-    VkDescriptorSetLayoutBinding layoutBinding {};
+    std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
+
+    VkDescriptorSetLayoutBinding modelBinding {};
     {
-        layoutBinding.binding = 0;
-        layoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        layoutBinding.descriptorCount = 1;
-        layoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        modelBinding.binding = 0;
+        modelBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        modelBinding.descriptorCount = 1;
+        modelBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     }
+
+    layoutBindings.push_back(modelBinding);
 
     VkDescriptorSetLayoutCreateInfo layoutInfo {};
     {
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount = 1;
-        layoutInfo.pBindings = &layoutBinding;
+        layoutInfo.bindingCount = static_cast<uint32_t>(layoutBindings.size());
+        layoutInfo.pBindings = layoutBindings.data();
     }
 
     VkDescriptorSetLayout setLayout;
@@ -59,10 +63,18 @@ void Pipeline::CreateDescriptorSetLayout()
 
 void Pipeline::CreatePipelineLayout()
 {
+    VkPushConstantRange pushConstant {};
+    {
+        pushConstant.size = sizeof(CameraUniform);
+        pushConstant.offset = 0;
+        pushConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    }
+
     VkPipelineLayoutCreateInfo createInfo {};
     {
         createInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-        createInfo.pushConstantRangeCount = 0;
+        createInfo.pushConstantRangeCount = 1;
+        createInfo.pPushConstantRanges = &pushConstant;
         createInfo.setLayoutCount = static_cast<uint32_t>(m_descriptorSetLayouts.size());
         createInfo.pSetLayouts = m_descriptorSetLayouts.data();
     }
@@ -91,28 +103,48 @@ void Pipeline::CreateRenderPass()
         colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     }
 
+    VkAttachmentDescription depthAttachment {};
+    {
+        depthAttachment.format = p_swapChain->findDepthFormat();
+        depthAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+        depthAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+        depthAttachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depthAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+        depthAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+        depthAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        depthAttachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    }
+
+    VkAttachmentReference depthAttachmentRef {};
+    {
+        depthAttachmentRef.attachment = 1;
+        depthAttachmentRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    }
+
     VkSubpassDescription subpass {};
     {
         subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
         subpass.colorAttachmentCount = 1;
         subpass.pColorAttachments = &colorAttachmentRef;
+        subpass.pDepthStencilAttachment = &depthAttachmentRef;
     }
 
     VkSubpassDependency dependency {};
     {
         dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
         dependency.dstSubpass = 0;
-        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
         dependency.srcAccessMask = 0;
-        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+        dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     }
 
+    std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
     VkRenderPassCreateInfo createInfo {};
     {
         createInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-        createInfo.attachmentCount = 1;
-        createInfo.pAttachments = &colorAttachment;
+        createInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+        createInfo.pAttachments = attachments.data();
         createInfo.subpassCount = 1;
         createInfo.pSubpasses = &subpass;
         createInfo.dependencyCount = 1;
@@ -201,7 +233,7 @@ void Pipeline::CreatePipeline()
         rasterizationState.depthClampEnable = VK_FALSE;
         rasterizationState.rasterizerDiscardEnable = VK_FALSE;
         rasterizationState.cullMode = VK_CULL_MODE_BACK_BIT;
-        rasterizationState.frontFace = VK_FRONT_FACE_CLOCKWISE;
+        rasterizationState.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         rasterizationState.lineWidth = 1.0f;
         rasterizationState.polygonMode = VK_POLYGON_MODE_FILL;
     }
@@ -216,6 +248,15 @@ void Pipeline::CreatePipeline()
     VkPipelineDepthStencilStateCreateInfo depthStencilState {};
     {
         depthStencilState.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+        depthStencilState.depthTestEnable = VK_TRUE;
+        depthStencilState.depthWriteEnable = VK_TRUE;
+        depthStencilState.depthCompareOp = VK_COMPARE_OP_LESS;
+        depthStencilState.depthBoundsTestEnable = VK_FALSE;
+        depthStencilState.minDepthBounds = 0.0f; // Optional
+        depthStencilState.maxDepthBounds = 1.0f; // Optional
+        depthStencilState.stencilTestEnable = VK_FALSE;
+        depthStencilState.front = {}; // Optional
+        depthStencilState.back = {}; // Optional
     }
 
     VkPipelineColorBlendAttachmentState colorBlendAttachment {};

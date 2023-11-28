@@ -6,7 +6,9 @@
 #include <cassert>
 #include <vector>
 #include <iostream>
-#include < array>
+#include <array>
+#include <set>
+#include <algorithm>
 
 #define VK_USE_PLATFORM_WIN32_KHR
 #define GLFW_INCLUDE_VULKAN
@@ -23,6 +25,7 @@
 using Vec2 = glm::vec2;
 using Vec3 = glm::vec3;
 using Vec4 = glm::vec4;
+using Mat4 = glm::mat4;
 
 struct Vertex {
     Vec3 pos;
@@ -61,8 +64,11 @@ struct MeshData {
     std::vector<uint32_t> indices;
 };
 
-struct UniformBufferObject {
-    alignas(16) glm::mat4 model;
+struct CameraUniform {
     alignas(16) glm::mat4 view;
     alignas(16) glm::mat4 proj;
+};
+
+struct ModelUniform {
+    alignas(16) glm::mat4 world;
 };

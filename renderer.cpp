@@ -4,59 +4,59 @@
 #include "swap_chain.h"
 #include "pipeline.h"
 #include "scene.h"
-#include "descriptor_helper.h"
 #include "model.h"
+#include "camera.h"
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_vulkan.h>
 
-Renderer::Renderer(const Device* pDevice, const SwapChain* pSwapChain, const Pipeline* pPipeline)
+Renderer::Renderer(Device* pDevice, SwapChain* pSwapChain, const Pipeline* pPipeline)
     : p_device { pDevice }
     , p_swapChain { pSwapChain }
     , p_pipeline { pPipeline }
 {
-    createUniformBuffers();
-    CreateFrameBuffers();
+    p_swapChain->CreateFrameBuffer(p_pipeline->GetRenderPass());
+    p_device->AllocateCommandBuffers(MAX_FRAMES_IN_FLIGHT);
     CreateSyncObjects();
-    CreateCommandBuffers();
     createDescriptorPool();
-    createDescriptorSets();
 }
 
 Renderer::~Renderer()
 {
-    delete p_descriptor;
 
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        vkDestroyBuffer(p_device->GetDevice(), uniformBuffers[i], nullptr);
-        vkFreeMemory(p_device->GetDevice(), uniformBuffersMemory[i], nullptr);
-    }
+    vkDestroyDescriptorPool(p_device->GetDevice(), m_descriptorPool, nullptr);
 
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        vkDestroySemaphore(p_device->GetDevice(), imageAvailableSemaphores[i], nullptr);
-        vkDestroySemaphore(p_device->GetDevice(), renderFinishedSemaphores[i], nullptr);
-        vkDestroyFence(p_device->GetDevice(), inFlightFences[i], nullptr);
-    }
+    // for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    //     vkDestroyBuffer(p_device->GetDevice(), uniformBuffers[i], nullptr);
+    //     vkFreeMemory(p_device->GetDevice(), uniformBuffersMemory[i], nullptr);
+    // }
 
-    for (auto framebuffer : m_frameBuffers) {
-        vkDestroyFramebuffer(p_device->GetDevice(), framebuffer, nullptr);
+    // for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    //     vkDestroySemaphore(p_device->GetDevice(), imageAvailableSemaphores[i], nullptr);
+    //     vkDestroySemaphore(p_device->GetDevice(), renderFinishedSemaphores[i], nullptr);
+    //     vkDestroyFence(p_device->GetDevice(), inFlightFences[i], nullptr);
+    // }
+
+    vkDestroySemaphore(p_device->GetDevice(), imageAvailableSemaphore, nullptr);
+    vkDestroySemaphore(p_device->GetDevice(), renderFinishedSemaphore, nullptr);
+    vkDestroyFence(p_device->GetDevice(), inFlightFence, nullptr);
+}
+
+void Renderer::Update(const Scene* pScene, float dt)
+{
+    for (auto& model : pScene->GetModels()) {
+        const_cast<Model*>(model)->Update(dt);
     }
 }
 
-void Renderer::DrawFrame(const Scene* pScene)
+void Renderer::Render(const Scene* pScene)
 {
-    static float time = 0.0f;
-
-    vkWaitForFences(p_device->GetDevice(), 1, &inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);
+    // vkWaitForFences(p_device->GetDevice(), 1, &inFlightFences[m_currentFrame], VK_TRUE, UINT64_MAX);
+    vkWaitForFences(p_device->GetDevice(), 1, &inFlightFence, VK_TRUE, UINT64_MAX);
 
     uint32_t imageIndex;
-    VkResult result = vkAcquireNextImageKHR(p_device->GetDevice(), p_swapChain->GetSwapChain(), UINT64_MAX, imageAvailableSemaphores[m_currentFrame], VK_NULL_HANDLE, &imageIndex);
-
-    UniformBufferObject ubo {};
-    ubo.model = glm::rotate(glm::mat4(1.0f), time * glm::radians(90.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
-    ubo.proj = glm::perspective(glm::radians(45.0f), p_swapChain->GetExtent2D().width / (float)p_swapChain->GetExtent2D().height, 0.1f, 10.0f);
-    // ubo.proj[1][1] *= -1;
-    memcpy(uniformBuffersMapped[m_currentFrame], &ubo, sizeof(ubo));
-
-    time += 0.1f;
+    // VkResult result = vkAcquireNextImageKHR(p_device->GetDevice(), p_swapChain->GetSwapChain(), UINT64_MAX, imageAvailableSemaphores[m_currentFrame], VK_NULL_HANDLE, &imageIndex);
+    VkResult result = vkAcquireNextImageKHR(p_device->GetDevice(), p_swapChain->GetSwapChain(), UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
         return;
@@ -66,14 +66,16 @@ void Renderer::DrawFrame(const Scene* pScene)
         CHECK_VK(result);
     }
 
-    vkResetFences(p_device->GetDevice(), 1, &inFlightFences[m_currentFrame]);
+    // vkResetFences(p_device->GetDevice(), 1, &inFlightFences[m_currentFrame]);
+    vkResetFences(p_device->GetDevice(), 1, &inFlightFence);
 
-    VkCommandBuffer commandBuffer = m_commandBuffers[m_currentFrame];
+    // VkCommandBuffer commandBuffer = p_command->GetCommandBuffer(m_currentFrame);
+    VkCommandBuffer commandBuffer = p_device->GetCommandBuffer(0);
 
-    vkResetCommandBuffer(commandBuffer, 0);
     RecordCommandBuffer(commandBuffer, imageIndex, pScene);
 
-    VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[m_currentFrame] };
+    // VkSemaphore waitSemaphores[] = { imageAvailableSemaphores[m_currentFrame] };
+    VkSemaphore waitSemaphores[] = { imageAvailableSemaphore };
     VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
     VkSubmitInfo submitInfo {};
     {
@@ -84,10 +86,12 @@ void Renderer::DrawFrame(const Scene* pScene)
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffer;
         submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = &renderFinishedSemaphores[m_currentFrame];
+        // submitInfo.pSignalSemaphores = &renderFinishedSemaphores[m_currentFrame];
+        submitInfo.pSignalSemaphores = &renderFinishedSemaphore;
     }
 
-    result = vkQueueSubmit(p_device->GetQueue(), 1, &submitInfo, inFlightFences[m_currentFrame]);
+    // result = vkQueueSubmit(p_device->GetQueue(), 1, &submitInfo, inFlightFences[m_currentFrame]);
+    result = vkQueueSubmit(p_device->GetQueue(), 1, &submitInfo, inFlightFence);
     CHECK_VK(result);
 
     VkSwapchainKHR swapChains[] = { p_swapChain->GetSwapChain() };
@@ -95,7 +99,8 @@ void Renderer::DrawFrame(const Scene* pScene)
     {
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &renderFinishedSemaphores[m_currentFrame];
+        // presentInfo.pWaitSemaphores = &renderFinishedSemaphores[m_currentFrame];
+        presentInfo.pWaitSemaphores = &renderFinishedSemaphore;
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = swapChains;
         presentInfo.pImageIndices = &imageIndex;
@@ -108,97 +113,84 @@ void Renderer::DrawFrame(const Scene* pScene)
     }
     CHECK_VK(result);
 
-    m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+    // m_currentFrame = (m_currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
-void Renderer::UpdateSwapChain(const SwapChain* pSwapChain)
+void Renderer::UpdateSwapChain(SwapChain* pSwapChain)
 {
     p_swapChain = pSwapChain;
-
-    for (auto framebuffer : m_frameBuffers) {
-        vkDestroyFramebuffer(p_device->GetDevice(), framebuffer, nullptr);
-    }
-
-    CreateFrameBuffers();
+    p_swapChain->CreateFrameBuffer(p_pipeline->GetRenderPass());
 }
 
-void Renderer::createDescriptorSets()
+// void Renderer::createDescriptorSets()
+//{
+//     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+//         auto descriptorSet = p_descriptor->AllocateDescriptorSet(p_pipeline->GetDescriptorSetLayouts());
+//         descriptorSets.push_back(descriptorSet);
+//     }
+//
+//     for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+//         VkDescriptorBufferInfo bufferInfo {};
+//         {
+//             bufferInfo.buffer = uniformBuffers[i];
+//             bufferInfo.offset = 0;
+//             bufferInfo.range = sizeof(UniformBufferObject);
+//         }
+//
+//         VkWriteDescriptorSet descriptorWrite {};
+//         {
+//             descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+//             descriptorWrite.dstSet = descriptorSets[i];
+//             descriptorWrite.dstBinding = 0;
+//             descriptorWrite.dstArrayElement = 0;
+//             descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+//             descriptorWrite.descriptorCount = 1;
+//             descriptorWrite.pBufferInfo = &bufferInfo;
+//             descriptorWrite.pImageInfo = nullptr; // Optional
+//             descriptorWrite.pTexelBufferView = nullptr; // Optional
+//         }
+//
+//         p_descriptor->UpdateDescriptorSet(descriptorWrite);
+//     }
+// }
+
+VkDescriptorSet Renderer::createDescriptorSet(std::vector<VkDescriptorSetLayout> layouts)
 {
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        auto descriptorSet = p_descriptor->AllocateDescriptorSet(p_pipeline->GetDescriptorSetLayouts());
-        descriptorSets.push_back(descriptorSet);
+    VkDescriptorSetAllocateInfo allocInfo {};
+    {
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = m_descriptorPool;
+        allocInfo.descriptorSetCount = static_cast<uint32_t>(layouts.size());
+        allocInfo.pSetLayouts = layouts.data();
     }
 
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        VkDescriptorBufferInfo bufferInfo {};
-        {
-            bufferInfo.buffer = uniformBuffers[i];
-            bufferInfo.offset = 0;
-            bufferInfo.range = sizeof(UniformBufferObject);
-        }
+    VkDescriptorSet descriptorSet;
+    vkAllocateDescriptorSets(p_device->GetDevice(), &allocInfo, &descriptorSet);
 
-        VkWriteDescriptorSet descriptorWrite {};
-        {
-            descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            descriptorWrite.dstSet = descriptorSets[i];
-            descriptorWrite.dstBinding = 0;
-            descriptorWrite.dstArrayElement = 0;
-            descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-            descriptorWrite.descriptorCount = 1;
-            descriptorWrite.pBufferInfo = &bufferInfo;
-            descriptorWrite.pImageInfo = nullptr; // Optional
-            descriptorWrite.pTexelBufferView = nullptr; // Optional
-        }
-
-        p_descriptor->UpdateDescriptorSet(descriptorWrite);
-    }
+    return descriptorSet;
 }
 
 void Renderer::createDescriptorPool()
 {
-    VkDescriptorPoolSize poolSize {};
-    poolSize.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-    poolSize.descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-
-    p_descriptor = new DescriptorHelper { p_device, poolSize, MAX_FRAMES_IN_FLIGHT };
-}
-
-void Renderer::createUniformBuffers()
-{
-    VkDeviceSize bufferSize = sizeof(UniformBufferObject);
-
-    uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-    uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-    uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
-
-    for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        p_device->CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, uniformBuffers[i], uniformBuffersMemory[i]);
-
-        vkMapMemory(p_device->GetDevice(), uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+    std::array<VkDescriptorPoolSize, 2> poolSizes {};
+    {
+        poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSizes[0].descriptorCount = 10;
+        poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        poolSizes[1].descriptorCount = 10;
     }
-}
 
-void Renderer::CreateFrameBuffers()
-{
-    m_frameBuffers.resize(p_swapChain->GetImageViews().size());
-
-    for (size_t i = 0; i < m_frameBuffers.size(); i++) {
-        VkImageView attachments[] = { p_swapChain->GetImageViews()[i] };
-
-        VkFramebufferCreateInfo framebufferInfo {};
-        {
-            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-            framebufferInfo.renderPass = p_pipeline->GetRenderPass();
-            framebufferInfo.attachmentCount = 1;
-            framebufferInfo.pAttachments = attachments;
-            framebufferInfo.width = p_swapChain->GetExtent2D().width;
-            framebufferInfo.height = p_swapChain->GetExtent2D().height;
-            framebufferInfo.layers = 1;
-        }
-
-        VkResult result = vkCreateFramebuffer(p_device->GetDevice(), &framebufferInfo, nullptr, &m_frameBuffers[i]);
-        CHECK_VK(result);
+    VkDescriptorPoolCreateInfo poolInfo {};
+    {
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+        poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
+        poolInfo.pPoolSizes = poolSizes.data();
+        poolInfo.maxSets = 1000;
     }
+
+    VkResult result = vkCreateDescriptorPool(p_device->GetDevice(), &poolInfo, nullptr, &m_descriptorPool);
+    CHECK_VK(result);
 }
 
 void Renderer::CreateSyncObjects()
@@ -215,40 +207,48 @@ void Renderer::CreateSyncObjects()
         fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
     }
 
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-        result = vkCreateSemaphore(p_device->GetDevice(), &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]);
-        CHECK_VK(result);
-        result = vkCreateSemaphore(p_device->GetDevice(), &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]);
-        CHECK_VK(result);
-        result = vkCreateFence(p_device->GetDevice(), &fenceInfo, nullptr, &inFlightFences[i]);
-        CHECK_VK(result);
-    }
-}
+    // for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+    //     result = vkCreateSemaphore(p_device->GetDevice(), &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]);
+    //     CHECK_VK(result);
+    //     result = vkCreateSemaphore(p_device->GetDevice(), &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]);
+    //     CHECK_VK(result);
+    //     result = vkCreateFence(p_device->GetDevice(), &fenceInfo, nullptr, &inFlightFences[i]);
+    //     CHECK_VK(result);
+    // }
 
-void Renderer::CreateCommandBuffers()
-{
-    p_device->CreateCommandBuffers(m_commandBuffers);
+    result = vkCreateSemaphore(p_device->GetDevice(), &semaphoreInfo, nullptr, &imageAvailableSemaphore);
+    CHECK_VK(result);
+    result = vkCreateSemaphore(p_device->GetDevice(), &semaphoreInfo, nullptr, &renderFinishedSemaphore);
+    CHECK_VK(result);
+    result = vkCreateFence(p_device->GetDevice(), &fenceInfo, nullptr, &inFlightFence);
+    CHECK_VK(result);
 }
 
 void Renderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex, const Scene* pScene)
 {
+    // vkResetCommandBuffer(commandBuffer, 0);
     VkCommandBufferBeginInfo beginInfo {};
     {
         beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
     }
 
     VkResult result = vkBeginCommandBuffer(commandBuffer, &beginInfo);
     CHECK_VK(result);
 
+    std::array<VkClearValue, 2> clearValues {};
+    clearValues[0].color = { { 0.0f, 0.0f, 0.0f, 1.0f } };
+    clearValues[1].depthStencil = { 1.0f, 0 };
+
     VkRenderPassBeginInfo renderPassInfo {};
     {
         renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
         renderPassInfo.renderPass = p_pipeline->GetRenderPass();
-        renderPassInfo.framebuffer = m_frameBuffers[imageIndex];
+        renderPassInfo.framebuffer = p_swapChain->GetFrameBuffer(imageIndex);
         renderPassInfo.renderArea.offset = { 0, 0 };
         renderPassInfo.renderArea.extent = p_swapChain->GetExtent2D();
-        renderPassInfo.clearValueCount = 1;
-        renderPassInfo.pClearValues = &m_clearColor;
+        renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+        renderPassInfo.pClearValues = clearValues.data();
     }
 
     vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
@@ -272,16 +272,54 @@ void Renderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t image
     }
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
+    vkResetDescriptorPool(p_device->GetDevice(), m_descriptorPool, 0);
+
+    auto matrix = pScene->GetViewProjMatrix();
+    vkCmdPushConstants(commandBuffer, p_pipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(CameraUniform), &matrix);
+
     for (const auto& model : pScene->GetModels()) {
-        VkBuffer buffers[] = { model->GetVertexBuffer() };
-        VkDeviceSize offsets[] = { 0 };
-        vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
-        vkCmdBindIndexBuffer(commandBuffer, model->GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
 
-        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, p_pipeline->GetPipelineLayout(), 0, 1, &descriptorSets[m_currentFrame], 0, nullptr);
+        auto dstSet = createDescriptorSet(p_pipeline->GetDescriptorSetLayouts());
+        model->Bind(commandBuffer);
 
-        vkCmdDrawIndexed(commandBuffer, model->GetIndexCount(), 1, 0, 0, 0);
+        VkDescriptorBufferInfo bufferInfo {};
+        bufferInfo.buffer = model->m_uniformBuffer;
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(ModelUniform);
+
+        VkWriteDescriptorSet descriptorWrite {};
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = dstSet;
+        descriptorWrite.dstBinding = 0;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pBufferInfo = &bufferInfo;
+        descriptorWrite.pImageInfo = nullptr; // Optional
+        descriptorWrite.pTexelBufferView = nullptr; // Optional
+
+        vkUpdateDescriptorSets(p_device->GetDevice(), 1, &descriptorWrite, 0, nullptr);
+
+        vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, p_pipeline->GetPipelineLayout(), 0, 1, &dstSet, 0, nullptr);
+
+        model->Draw(commandBuffer);
     }
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+
+    // ImGui::ShowDemoWindow();
+    {
+        ImGui::Begin("Camera");
+        ImGui::SliderFloat("x", &pScene->p_camera->m_position.x, -10.0f, 10.0f);
+        ImGui::SliderFloat("y", &pScene->p_camera->m_position.y, -10.0f, 10.0f);
+        ImGui::SliderFloat("z", &pScene->p_camera->m_position.z, -10.0f, 10.0f);
+
+        ImGui::End();
+    }
+
+    ImGui::Render();
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);
 
     vkCmdEndRenderPass(commandBuffer);
     result = vkEndCommandBuffer(commandBuffer);

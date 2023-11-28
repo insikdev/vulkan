@@ -11,6 +11,7 @@ Window::Window(const char* title, App* pApp)
 Window::~Window()
 {
     glfwDestroyWindow(m_window);
+    glfwTerminate();
 }
 
 bool Window::ShouldClose()

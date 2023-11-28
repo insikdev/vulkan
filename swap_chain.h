@@ -14,14 +14,15 @@ public:
     SwapChain& operator=(SwapChain&&) = delete;
 
 public: // getter
-    inline VkExtent2D GetExtent2D() const { return m_extent; }
-    inline VkFormat GetFormat() const { return m_surfaceFormat.format; }
-    inline std::vector<VkImageView> GetImageViews() const { return m_imageViews; }
-    inline VkSwapchainKHR GetSwapChain() const { return m_swapChain; }
+    VkExtent2D GetExtent2D() const { return m_extent; }
+    VkFormat GetFormat() const { return m_surfaceFormat.format; }
+    std::vector<VkImageView> GetImageViews() const { return m_imageViews; }
+    VkSwapchainKHR GetSwapChain() const { return m_swapChain; }
+    VkFramebuffer GetFrameBuffer(uint32_t i) const { return m_frameBuffers[i]; }
+    uint32_t GetImageCount() { return m_imageCount; }
 
 public:
-    static std::vector<VkSurfaceFormatKHR> GetSurfaceFormats(VkPhysicalDevice, VkSurfaceKHR);
-    static std::vector<VkPresentModeKHR> GetPresentModes(VkPhysicalDevice, VkSurfaceKHR);
+    void CreateFrameBuffer(VkRenderPass);
 
 private:
     void SelectSurfaceFormat();
@@ -29,6 +30,18 @@ private:
     void SelectCapabilities();
     void CreateSwapChain();
     void CreateImageViews();
+    void CreateDepthResources();
+
+    VkFormat findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
+
+public:
+    VkFormat findDepthFormat() const
+    {
+        return findSupportedFormat(
+            { VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT },
+            VK_IMAGE_TILING_OPTIMAL,
+            VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT);
+    }
 
 private:
     const Window* p_window;
@@ -43,4 +56,9 @@ private:
     VkSurfaceTransformFlagBitsKHR m_currentTransform;
     VkSwapchainKHR m_swapChain;
     std::vector<VkImageView> m_imageViews;
+    std::vector<VkFramebuffer> m_frameBuffers;
+
+    VkImage depthImage;
+    VkDeviceMemory depthImageMemory;
+    VkImageView depthImageView;
 };

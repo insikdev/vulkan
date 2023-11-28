@@ -7,6 +7,7 @@ Model::Model(const Device* pDevice, const MeshData& data)
 {
     CreateVertexBuffer(data.vertices);
     CreateIndexBuffer(data.indices);
+    CreateUniformbuffer();
 }
 
 Model::~Model()
@@ -15,6 +16,34 @@ Model::~Model()
     vkFreeMemory(p_device->GetDevice(), m_vertexBufferMemory, nullptr);
     vkDestroyBuffer(p_device->GetDevice(), m_indexBuffer, nullptr);
     vkFreeMemory(p_device->GetDevice(), m_indexBufferMemory, nullptr);
+    vkDestroyBuffer(p_device->GetDevice(), m_uniformBuffer, nullptr);
+    vkFreeMemory(p_device->GetDevice(), m_uniformBufferMemory, nullptr);
+}
+
+void Model::Bind(VkCommandBuffer commandBuffer) const
+{
+    VkBuffer buffers[] = { m_vertexBuffer };
+    VkDeviceSize offsets[] = { 0 };
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, buffers, offsets);
+    vkCmdBindIndexBuffer(commandBuffer, m_indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+}
+
+void Model::Draw(VkCommandBuffer commandBuffer) const
+{
+    vkCmdDrawIndexed(commandBuffer, m_indexCount, 1, 0, 0, 0);
+}
+
+Mat4 Model::GetWorldMatrix() const
+{
+    return m_transform.GetWorldMatrix();
+}
+
+void Model::Update(float dt)
+{
+    // m_transform.RotateX(dt);
+    // m_transform.RotateY(dt);
+    m_transform.RotateZ(dt);
+    UpdateUniformBuffer();
 }
 
 void Model::CreateVertexBuffer(const std::vector<Vertex>& vertices)
@@ -56,4 +85,24 @@ void Model::CreateIndexBuffer(const std::vector<uint32_t>& indices)
 
     vkDestroyBuffer(p_device->GetDevice(), stagingBuffer, nullptr);
     vkFreeMemory(p_device->GetDevice(), stagingBufferMemory, nullptr);
+}
+
+void Model::CreateUniformbuffer()
+{
+    VkDeviceSize bufferSize = sizeof(ModelUniform);
+
+    p_device->CreateBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, m_uniformBuffer, m_uniformBufferMemory);
+
+    UpdateUniformBuffer();
+}
+
+void Model::UpdateUniformBuffer()
+{
+    ModelUniform modelUniformData {};
+    modelUniformData.world = m_transform.GetWorldMatrix();
+
+    void* data;
+    vkMapMemory(p_device->GetDevice(), m_uniformBufferMemory, 0, sizeof(ModelUniform), 0, &data);
+    memcpy(data, &modelUniformData, sizeof(ModelUniform));
+    vkUnmapMemory(p_device->GetDevice(), m_uniformBufferMemory);
 }

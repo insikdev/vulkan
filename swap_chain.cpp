@@ -3,7 +3,7 @@
 #include "window.h"
 #include "surface.h"
 #include "device.h"
-#include <algorithm>
+#include "query.h"
 
 SwapChain::SwapChain(const Window* pWindow, const Surface* pSurface, const Device* pDevice)
     : p_window { pWindow }
@@ -15,61 +15,57 @@ SwapChain::SwapChain(const Window* pWindow, const Surface* pSurface, const Devic
     SelectCapabilities();
     CreateSwapChain();
     CreateImageViews();
+    CreateDepthResources();
 }
 
 SwapChain::~SwapChain()
 {
+    vkDestroyImageView(p_device->GetDevice(), depthImageView, nullptr);
+    vkDestroyImage(p_device->GetDevice(), depthImage, nullptr);
+    vkFreeMemory(p_device->GetDevice(), depthImageMemory, nullptr);
     /*
      * VkImage will be implicitly destroyed when the VkSwapchainKHR is destroyed.
      */
+    for (auto framebuffer : m_frameBuffers) {
+        vkDestroyFramebuffer(p_device->GetDevice(), framebuffer, nullptr);
+    }
+
     for (auto imageView : m_imageViews) {
         vkDestroyImageView(p_device->GetDevice(), imageView, nullptr);
     }
+
     vkDestroySwapchainKHR(p_device->GetDevice(), m_swapChain, nullptr);
 }
 
-std::vector<VkSurfaceFormatKHR> SwapChain::GetSurfaceFormats(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface)
+void SwapChain::CreateFrameBuffer(VkRenderPass renderPass)
 {
-    VkResult result;
+    m_frameBuffers.resize(m_imageViews.size());
 
-    uint32_t count = 0;
-    std::vector<VkSurfaceFormatKHR> formats;
+    for (size_t i = 0; i < m_frameBuffers.size(); i++) {
+        std::array<VkImageView, 2> attachments = { m_imageViews[i], depthImageView };
 
-    result = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &count, nullptr);
-    CHECK_VK(result);
-    assert(count != 0);
+        VkFramebufferCreateInfo framebufferInfo {};
+        {
+            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+            framebufferInfo.renderPass = renderPass;
+            framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
+            framebufferInfo.pAttachments = attachments.data();
+            framebufferInfo.width = m_extent.width;
+            framebufferInfo.height = m_extent.height;
+            framebufferInfo.layers = 1;
+        }
 
-    formats.resize(count);
-    result = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &count, formats.data());
-    CHECK_VK(result);
-
-    return formats;
-}
-
-std::vector<VkPresentModeKHR> SwapChain::GetPresentModes(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface)
-{
-    VkResult result;
-
-    uint32_t count;
-    std::vector<VkPresentModeKHR> presentModes;
-
-    result = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &count, nullptr);
-    CHECK_VK(result);
-    assert(count != 0);
-
-    presentModes.resize(count);
-    result = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &count, presentModes.data());
-    CHECK_VK(result);
-
-    return presentModes;
+        VkResult result = vkCreateFramebuffer(p_device->GetDevice(), &framebufferInfo, nullptr, &m_frameBuffers[i]);
+        CHECK_VK(result);
+    }
 }
 
 void SwapChain::SelectSurfaceFormat()
 {
-    const auto& availableFormats = SwapChain::GetSurfaceFormats(p_device->GetPhysicalDevice(), p_surface->GetSurface());
+    const auto& availableFormats = Query::GetSurfaceFormats(p_device->GetPhysicalDevice(), p_surface->GetSurface());
 
     for (const auto& availableFormat : availableFormats) {
-        if (availableFormat.format == VK_FORMAT_B8G8R8A8_SRGB && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+        if (availableFormat.format == VK_FORMAT_B8G8R8A8_SNORM && availableFormat.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
             m_surfaceFormat = availableFormat;
             return;
         }
@@ -80,7 +76,10 @@ void SwapChain::SelectSurfaceFormat()
 
 void SwapChain::SelectPresentMode()
 {
-    const auto& presentModes = SwapChain::GetPresentModes(p_device->GetPhysicalDevice(), p_surface->GetSurface());
+    // m_presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+    // return;
+
+    const auto& presentModes = Query::GetPresentModes(p_device->GetPhysicalDevice(), p_surface->GetSurface());
 
     for (const auto& mode : presentModes) {
         if (mode == VK_PRESENT_MODE_MAILBOX_KHR) {
@@ -125,7 +124,7 @@ void SwapChain::CreateSwapChain()
 {
     VkResult result;
 
-    QueueFamilyIndices indices = Device::FindQueueFamilies(p_device->GetPhysicalDevice(), p_surface->GetSurface());
+    QueueFamilyIndices indices = p_device->GetQueueFamilyIndices();
     uint32_t queueFamilyIndices[] = { indices.graphicsFamily, indices.presentFamily };
     assert(indices.isComplete());
 
@@ -196,4 +195,28 @@ void SwapChain::CreateImageViews()
         result = vkCreateImageView(p_device->GetDevice(), &createInfo, nullptr, &m_imageViews[i]);
         CHECK_VK(result);
     }
+}
+
+void SwapChain::CreateDepthResources()
+{
+    VkFormat depthFormat = findDepthFormat();
+
+    p_device->CreateImage(m_extent.width, m_extent.height, depthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depthImage, depthImageMemory);
+    depthImageView = p_device->CreateImageView(depthImage, depthFormat, VK_IMAGE_ASPECT_DEPTH_BIT);
+}
+
+VkFormat SwapChain::findSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const
+{
+    for (VkFormat format : candidates) {
+        VkFormatProperties props;
+        vkGetPhysicalDeviceFormatProperties(p_device->GetPhysicalDevice(), format, &props);
+
+        if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
+            return format;
+        } else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
+            return format;
+        }
+    }
+
+    throw std::runtime_error("failed to find supported format!");
 }

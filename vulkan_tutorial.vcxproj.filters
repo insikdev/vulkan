@@ -8,11 +8,14 @@
     <Filter Include="shaders">
       <UniqueIdentifier>{3386dfb9-5a2f-49c5-be06-ccd932e305e4}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\helper">
-      <UniqueIdentifier>{39907a36-7e78-4baa-8bf9-20403baee252}</UniqueIdentifier>
+    <Filter Include="Source Files\utils">
+      <UniqueIdentifier>{1710d3f8-0eb1-4885-80a6-fcb7912b8cca}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\core">
-      <UniqueIdentifier>{1c2f6bdc-4fc4-4c32-a888-b1686e2c6fbc}</UniqueIdentifier>
+    <Filter Include="Source Files\renderer">
+      <UniqueIdentifier>{a2a2c526-fa44-438f-b418-12033a579832}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\wrapper">
+      <UniqueIdentifier>{cc3abbb3-366c-4085-8eba-9aa5f7eb19d4}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -22,44 +25,41 @@
     <ClCompile Include="pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="extension.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="app.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="renderer.cpp">
-      <Filter>Source Files</Filter>
+    <ClCompile Include="extension.cpp">
+      <Filter>Source Files\utils</Filter>
     </ClCompile>
     <ClCompile Include="model.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="renderer.cpp">
+      <Filter>Source Files\renderer</Filter>
     </ClCompile>
     <ClCompile Include="scene.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\renderer</Filter>
     </ClCompile>
-    <ClCompile Include="surface.cpp">
+    <ClCompile Include="transform.cpp">
       <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="camera.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="descriptor_helper.cpp">
-      <Filter>Source Files\helper</Filter>
     </ClCompile>
     <ClCompile Include="device.cpp">
-      <Filter>Source Files\core</Filter>
+      <Filter>Source Files\wrapper</Filter>
     </ClCompile>
     <ClCompile Include="instance.cpp">
-      <Filter>Source Files\core</Filter>
+      <Filter>Source Files\wrapper</Filter>
     </ClCompile>
     <ClCompile Include="pipeline.cpp">
-      <Filter>Source Files\core</Filter>
+      <Filter>Source Files\wrapper</Filter>
+    </ClCompile>
+    <ClCompile Include="surface.cpp">
+      <Filter>Source Files\wrapper</Filter>
     </ClCompile>
     <ClCompile Include="swap_chain.cpp">
-      <Filter>Source Files\core</Filter>
+      <Filter>Source Files\wrapper</Filter>
     </ClCompile>
     <ClCompile Include="window.cpp">
-      <Filter>Source Files\core</Filter>
+      <Filter>Source Files\wrapper</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -74,53 +74,59 @@
     <None Include="compile.bat">
       <Filter>Source Files</Filter>
     </None>
+    <None Include="vcpkg.json" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="app.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="extension.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="geometry_helper.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="model.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="pch.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="renderer.h">
-      <Filter>Source Files</Filter>
+    <ClInclude Include="extension.h">
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="geometry_helper.h">
+      <Filter>Source Files\utils</Filter>
     </ClInclude>
     <ClInclude Include="shader.h">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="camera.h">
+      <Filter>Source Files\renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="model.h">
+      <Filter>Source Files\renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="renderer.h">
+      <Filter>Source Files\renderer</Filter>
     </ClInclude>
     <ClInclude Include="scene.h">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\renderer</Filter>
     </ClInclude>
-    <ClInclude Include="surface.h">
+    <ClInclude Include="transform.h">
       <Filter>Source Files</Filter>
-    </ClInclude>
-    <ClInclude Include="camera.h" />
-    <ClInclude Include="descriptor_helper.h">
-      <Filter>Source Files\helper</Filter>
     </ClInclude>
     <ClInclude Include="device.h">
-      <Filter>Source Files\core</Filter>
+      <Filter>Source Files\wrapper</Filter>
     </ClInclude>
     <ClInclude Include="instance.h">
-      <Filter>Source Files\core</Filter>
+      <Filter>Source Files\wrapper</Filter>
     </ClInclude>
     <ClInclude Include="pipeline.h">
-      <Filter>Source Files\core</Filter>
+      <Filter>Source Files\wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="surface.h">
+      <Filter>Source Files\wrapper</Filter>
     </ClInclude>
     <ClInclude Include="swap_chain.h">
-      <Filter>Source Files\core</Filter>
+      <Filter>Source Files\wrapper</Filter>
     </ClInclude>
     <ClInclude Include="window.h">
-      <Filter>Source Files\core</Filter>
+      <Filter>Source Files\wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="query.h">
+      <Filter>Source Files\utils</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

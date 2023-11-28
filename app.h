@@ -22,6 +22,7 @@ private:
     void SetupDebugMessenger();
     void CalculateFrameRate();
     void HandleResize();
+    void InitGui();
 
 private:
     std::vector<const char*> m_requiredLayers { "VK_LAYER_KHRONOS_validation" };
@@ -52,4 +53,5 @@ private:
     int numFrames {};
     float frameTime {};
     bool m_resized { false };
+    VkDescriptorPool m_pool;
 };

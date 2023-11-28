@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "vulkan-tutorial",
+  "version": "0.0.1",
+  "dependencies": [
+    {
+      "name": "imgui",
+      "features": [ "glfw-binding", "vulkan-binding" ]
+    },
+    {
+      "name": "glfw3",
+      "features": []
+    }
+  ]
+}

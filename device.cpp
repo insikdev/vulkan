@@ -3,7 +3,7 @@
 #include "instance.h"
 #include "surface.h"
 #include "swap_chain.h"
-#include "set"
+#include "query.h"
 
 Device::Device(const Instance* pInstance, const Surface* pSurface, const std::vector<const char*>& extensions)
     : p_instance { pInstance }
@@ -20,21 +20,23 @@ Device::~Device()
     /*
      * VkPhysicalDevice will be implicitly destroyed when the VkInstance is destroyed.
      */
-    vkDestroyCommandPool(m_device, m_commandPool, nullptr);
+    vkDestroyCommandPool(m_device, m_commandPool, 0);
     vkDestroyDevice(m_device, nullptr);
 }
 
-void Device::CreateCommandBuffers(std::vector<VkCommandBuffer>& commandBuffers) const
+void Device::AllocateCommandBuffers(uint32_t count)
 {
     VkCommandBufferAllocateInfo allocInfo {};
     {
         allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
         allocInfo.commandPool = m_commandPool;
         allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = static_cast<uint32_t>(commandBuffers.size());
+        allocInfo.commandBufferCount = count;
     }
 
-    VkResult result = vkAllocateCommandBuffers(m_device, &allocInfo, commandBuffers.data());
+    m_commandBuffers.resize(count);
+
+    VkResult result = vkAllocateCommandBuffers(m_device, &allocInfo, m_commandBuffers.data());
     CHECK_VK(result);
 }
 
@@ -110,35 +112,66 @@ void Device::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize siz
     vkFreeCommandBuffers(m_device, m_commandPool, 1, &commandBuffer);
 }
 
-QueueFamilyIndices Device::FindQueueFamilies(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface)
+void Device::CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) const
 {
-    QueueFamilyIndices indices;
+    VkImageCreateInfo imageInfo {};
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.extent.width = width;
+    imageInfo.extent.height = height;
+    imageInfo.extent.depth = 1;
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 1;
+    imageInfo.format = format;
+    imageInfo.tiling = tiling;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.usage = usage;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
 
-    const auto& queueFamilies = Device::GetQueueFamilies(physicalDevice);
-
-    for (uint32_t i = 0; i < queueFamilies.size(); i++) {
-        if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
-            indices.graphicsFamily = i;
-        }
-
-        VkBool32 presentSupport = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &presentSupport);
-
-        if (presentSupport) {
-            indices.presentFamily = i;
-        }
-
-        if (indices.isComplete()) {
-            break;
-        }
+    if (vkCreateImage(m_device, &imageInfo, nullptr, &image) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create image!");
     }
 
-    return indices;
+    VkMemoryRequirements memRequirements;
+    vkGetImageMemoryRequirements(m_device, image, &memRequirements);
+
+    VkMemoryAllocateInfo allocInfo {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
+
+    if (vkAllocateMemory(m_device, &allocInfo, nullptr, &imageMemory) != VK_SUCCESS) {
+        throw std::runtime_error("failed to allocate image memory!");
+    }
+
+    vkBindImageMemory(m_device, image, imageMemory, 0);
+}
+
+VkImageView Device::CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) const
+{
+    VkImageViewCreateInfo viewInfo {};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = image;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = format;
+    viewInfo.subresourceRange.aspectMask = aspectFlags;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+
+    VkImageView imageView;
+    if (vkCreateImageView(m_device, &viewInfo, nullptr, &imageView) != VK_SUCCESS) {
+        throw std::runtime_error("failed to create texture image view!");
+    }
+
+    return imageView;
 }
 
 void Device::SelectPhysicalDevice()
 {
-    const auto& physicalDevices = EnumeratePhysicalDevices();
+    const auto& physicalDevices = Query::GetPhysicalDevices(p_instance->GetInstance());
 
     for (const auto& physicalDevice : physicalDevices) {
         if (IsDeviceSuitable(physicalDevice)) {
@@ -152,7 +185,7 @@ void Device::SelectPhysicalDevice()
 
 void Device::CreateLogicalDevice()
 {
-    m_queueFamilyIndices = Device::FindQueueFamilies(m_physicalDevice, p_surface->GetSurface());
+    m_queueFamilyIndices = FindQueueFamily(m_physicalDevice, p_surface->GetSurface());
 
     std::set<uint32_t> uniqueQueueFamilies = { m_queueFamilyIndices.graphicsFamily, m_queueFamilyIndices.presentFamily };
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
@@ -189,28 +222,14 @@ void Device::CreateLogicalDevice()
 void Device::CreateCommandPool()
 {
     VkCommandPoolCreateInfo poolInfo {};
-    poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-    poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-    poolInfo.queueFamilyIndex = m_queueFamilyIndices.graphicsFamily;
+    {
+        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
+        poolInfo.queueFamilyIndex = m_queueFamilyIndices.graphicsFamily;
+    }
 
     VkResult result = vkCreateCommandPool(m_device, &poolInfo, nullptr, &m_commandPool);
     CHECK_VK(result);
-}
-
-std::vector<VkPhysicalDevice> Device::EnumeratePhysicalDevices()
-{
-    uint32_t count = 0;
-    std::vector<VkPhysicalDevice> devices;
-
-    VkResult result = vkEnumeratePhysicalDevices(p_instance->GetInstance(), &count, nullptr);
-    CHECK_VK(result);
-    assert(count != 0);
-
-    devices.resize(count);
-    result = vkEnumeratePhysicalDevices(p_instance->GetInstance(), &count, devices.data());
-    CHECK_VK(result);
-
-    return devices;
 }
 
 bool Device::IsDeviceSuitable(VkPhysicalDevice physicalDevice)
@@ -224,7 +243,7 @@ bool Device::IsDeviceSuitable(VkPhysicalDevice physicalDevice)
     VkPhysicalDeviceFeatures features {};
     vkGetPhysicalDeviceFeatures(physicalDevice, &features);
 
-    QueueFamilyIndices indices = Device::FindQueueFamilies(physicalDevice, p_surface->GetSurface());
+    QueueFamilyIndices indices = FindQueueFamily(physicalDevice, p_surface->GetSurface());
 
     if (!indices.isComplete()) {
         return false;
@@ -234,25 +253,11 @@ bool Device::IsDeviceSuitable(VkPhysicalDevice physicalDevice)
         return false;
     }
 
-    if (SwapChain::GetSurfaceFormats(physicalDevice, p_surface->GetSurface()).empty() || SwapChain::GetPresentModes(physicalDevice, p_surface->GetSurface()).empty()) {
+    if (Query::GetSurfaceFormats(physicalDevice, p_surface->GetSurface()).empty() || Query::GetPresentModes(physicalDevice, p_surface->GetSurface()).empty()) {
         return false;
     }
 
     return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU || properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
-}
-
-std::vector<VkQueueFamilyProperties> Device::GetQueueFamilies(VkPhysicalDevice physicalDevice)
-{
-    uint32_t count = 0;
-    std::vector<VkQueueFamilyProperties> queueFamilies;
-
-    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &count, nullptr);
-    assert(count != 0);
-
-    queueFamilies.resize(count);
-    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &count, queueFamilies.data());
-
-    return queueFamilies;
 }
 
 bool Device::CheckDeviceExtensionSupport(VkPhysicalDevice physicalDevice)
@@ -284,4 +289,30 @@ uint32_t Device::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags prope
     }
 
     throw std::runtime_error("failed to find suitable memory type!");
+}
+
+QueueFamilyIndices Device::FindQueueFamily(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface)
+{
+    QueueFamilyIndices indices;
+
+    const auto& queueFamilies = Query::GetQueueFamilyProperties(physicalDevice);
+
+    for (uint32_t i = 0; i < queueFamilies.size(); i++) {
+        if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) {
+            indices.graphicsFamily = i;
+        }
+
+        VkBool32 presentSupport = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &presentSupport);
+
+        if (presentSupport) {
+            indices.presentFamily = i;
+        }
+
+        if (indices.isComplete()) {
+            break;
+        }
+    }
+
+    return indices;
 }

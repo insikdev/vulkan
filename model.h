@@ -1,5 +1,6 @@
 #pragma once
 
+#include "transform.h"
 class Device;
 
 class Model {
@@ -16,17 +17,30 @@ public: // getter
     inline VkBuffer GetIndexBuffer() const { return m_indexBuffer; }
     inline uint32_t GetIndexCount() const { return m_indexCount; }
 
+public:
+    void Update(float dt);
+    void Bind(VkCommandBuffer) const;
+    void Draw(VkCommandBuffer) const;
+    Mat4 GetWorldMatrix() const;
+
 private:
     void CreateVertexBuffer(const std::vector<Vertex>&);
     void CreateIndexBuffer(const std::vector<uint32_t>&);
+    void CreateUniformbuffer();
+    void UpdateUniformBuffer();
 
 private:
     const Device* p_device;
 
-private:
+public:
     uint32_t m_indexCount;
     VkBuffer m_indexBuffer;
     VkBuffer m_vertexBuffer;
+    VkBuffer m_uniformBuffer;
     VkDeviceMemory m_indexBufferMemory;
     VkDeviceMemory m_vertexBufferMemory;
+    VkDeviceMemory m_uniformBufferMemory;
+    Transform m_transform;
+
+private:
 };

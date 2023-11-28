@@ -70,6 +70,9 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Label="Vcpkg">
+    <VcpkgEnableManifest>true</VcpkgEnableManifest>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -144,8 +147,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="app.cpp" />
-    <ClCompile Include="camera.cpp" />
-    <ClCompile Include="descriptor_helper.cpp" />
     <ClCompile Include="device.cpp" />
     <ClCompile Include="extension.cpp" />
     <ClCompile Include="instance.cpp" />
@@ -160,6 +161,7 @@
     <ClCompile Include="scene.cpp" />
     <ClCompile Include="surface.cpp" />
     <ClCompile Include="swap_chain.cpp" />
+    <ClCompile Include="transform.cpp" />
     <ClCompile Include="window.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -168,14 +170,15 @@
     <None Include="compile.bat" />
     <None Include="shaders\simple.frag" />
     <None Include="shaders\simple.vert" />
+    <None Include="vcpkg.json" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="app.h" />
     <ClInclude Include="camera.h" />
-    <ClInclude Include="descriptor_helper.h" />
     <ClInclude Include="device.h" />
     <ClInclude Include="extension.h" />
     <ClInclude Include="geometry_helper.h" />
+    <ClInclude Include="query.h" />
     <ClInclude Include="scene.h" />
     <ClInclude Include="instance.h" />
     <ClInclude Include="model.h" />
@@ -185,6 +188,7 @@
     <ClInclude Include="surface.h" />
     <ClInclude Include="swap_chain.h" />
     <ClInclude Include="shader.h" />
+    <ClInclude Include="transform.h" />
     <ClInclude Include="window.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
