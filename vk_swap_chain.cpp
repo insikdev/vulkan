@@ -1,8 +1,8 @@
 #include "pch.h"
-#include "swap_chain.h"
-#include "window.h"
-#include "surface.h"
-#include "device.h"
+#include "vk_swap_chain.h"
+#include "vk_window.h"
+#include "vk_surface.h"
+#include "vk_device.h"
 #include "query.h"
 
 SwapChain::SwapChain(const Window* pWindow, const Surface* pSurface, const Device* pDevice)

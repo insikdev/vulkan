@@ -1,7 +1,7 @@
 #include "pch.h"
-#include "surface.h"
-#include "window.h"
-#include "instance.h"
+#include "vk_surface.h"
+#include "vk_window.h"
+#include "vk_instance.h"
 
 Surface::Surface(const Window* pWindow, const Instance* pInstance)
     : p_window { pWindow }

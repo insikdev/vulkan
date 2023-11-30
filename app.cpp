@@ -1,11 +1,11 @@
 #include "pch.h"
 #include "app.h"
-#include "window.h"
-#include "instance.h"
-#include "surface.h"
-#include "device.h"
-#include "swap_chain.h"
-#include "pipeline.h"
+#include "vk_window.h"
+#include "vk_instance.h"
+#include "vk_surface.h"
+#include "vk_device.h"
+#include "vk_swap_chain.h"
+#include "vk_pipeline.h"
 #include "renderer.h"
 #include "scene.h"
 #include "model.h"
@@ -17,6 +17,9 @@
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
+#include "vk_command_pool.h"
+#include "vk_command_buffer.h"
+#include "vk_descriptor_pool.h"
 
 App::App()
 {
@@ -35,22 +38,20 @@ App::App()
     auto camera = new Camera { aspectRatio };
     p_scene = new Scene { camera };
 
-    // auto tri = new Model(p_device, Geometry::CreateTriangle());
-    // tri->m_transform.m_scale.x = 2.0f;
-    // tri->m_transform.m_scale.y = 2.0f;
-
-    auto cube = new Model(p_device, Geometry::CreateCube());
-
-    // p_scene->AddModel(tri);
-    // p_scene->AddModel(new Model(p_device, Geometry::CreateRectangle()));
-    p_scene->AddModel(cube);
+    auto cube1 = new Model(p_device, Geometry::CreateCube());
+    auto cube2 = new Model(p_device, Geometry::CreateCube());
+    cube2->m_transform.m_position.x = -1.0f;
+    cube2->m_transform.m_position.y = -2.0f;
+    cube2->m_transform.m_position.z = -3.0f;
+    p_scene->AddModel(cube1);
+    p_scene->AddModel(cube2);
 
     InitGui();
 }
 
 App::~App()
 {
-    vkDestroyDescriptorPool(p_device->GetDevice(), m_pool, 0);
+    delete p_descriptor;
     ImGui_ImplVulkan_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
@@ -136,17 +137,13 @@ void App::HandleResize()
 
 void App::InitGui()
 {
-    VkDescriptorPoolSize pool_sizes[] = { { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 } };
-    VkDescriptorPoolCreateInfo pool_info {};
-    {
-        pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        pool_info.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
-        pool_info.maxSets = 1;
-        pool_info.poolSizeCount = (uint32_t)IM_ARRAYSIZE(pool_sizes);
-        pool_info.pPoolSizes = pool_sizes;
-    }
-    VkResult result = vkCreateDescriptorPool(p_device->GetDevice(), &pool_info, 0, &m_pool);
-    CHECK_VK(result);
+    CommandPool* p_command = new CommandPool { p_device };
+    CommandBuffer commandBuffer = p_command->AllocateCommandBuffer();
+
+    std::vector<VkDescriptorPoolSize> pool_sizes = {
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 }
+    };
+    p_descriptor = new DescriptorPool { p_device, pool_sizes };
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
@@ -169,45 +166,29 @@ void App::InitGui()
         info.PhysicalDevice = p_device->GetPhysicalDevice();
         info.Device = p_device->GetDevice();
         info.Queue = p_device->GetQueue();
-        info.DescriptorPool = m_pool;
+        info.DescriptorPool = p_descriptor->GetPool();
         info.MinImageCount = p_swapChain->GetImageCount() - 1;
         info.ImageCount = p_swapChain->GetImageCount();
     }
 
     ImGui_ImplVulkan_Init(&info, p_pipeline->GetRenderPass());
 
-    VkCommandBufferAllocateInfo allocInfo {};
-    {
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandPool = p_device->GetCommandPool();
-        allocInfo.commandBufferCount = 1;
-    }
-
-    VkCommandBuffer commandBuffer;
-    vkAllocateCommandBuffers(p_device->GetDevice(), &allocInfo, &commandBuffer);
-
-    VkCommandBufferBeginInfo beginInfo {};
-    {
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    }
-
-    vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-    ImGui_ImplVulkan_CreateFontsTexture(commandBuffer);
-    vkEndCommandBuffer(commandBuffer);
+    commandBuffer.Begin();
+    ImGui_ImplVulkan_CreateFontsTexture(commandBuffer.GetHandle());
+    commandBuffer.End();
 
     VkSubmitInfo submitInfo {};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffer;
+    {
+        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+        submitInfo.commandBufferCount = 1;
+        submitInfo.pCommandBuffers = commandBuffer.GetPtr();
+    }
 
     vkQueueSubmit(p_device->GetQueue(), 1, &submitInfo, VK_NULL_HANDLE);
     vkQueueWaitIdle(p_device->GetQueue());
 
-    vkFreeCommandBuffers(p_device->GetDevice(), p_device->GetCommandPool(), 1, &commandBuffer);
-
     vkDeviceWaitIdle(p_device->GetDevice());
     ImGui_ImplVulkan_DestroyFontUploadObjects();
+
+    delete p_command;
 }

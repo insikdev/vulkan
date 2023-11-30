@@ -8,6 +8,7 @@ class SwapChain;
 class Pipeline;
 class Renderer;
 class Scene;
+class DescriptorPool;
 
 class App {
 public:
@@ -25,8 +26,7 @@ private:
     void InitGui();
 
 private:
-    std::vector<const char*> m_requiredLayers { "VK_LAYER_KHRONOS_validation" };
-    // std::vector<const char*> m_requiredLayers { "VK_LAYER_KHRONOS_validation", "VK_LAYER_LUNARG_api_dump" };
+    std::vector<const char*> m_requiredLayers { "VK_LAYER_KHRONOS_validation", /*"VK_LAYER_LUNARG_api_dump"*/ };
     std::vector<const char*> m_requiredLayerExtensions {
         VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
         VK_KHR_SURFACE_EXTENSION_NAME,
@@ -46,6 +46,7 @@ private:
     Pipeline* p_pipeline;
     Renderer* p_renderer;
     Scene* p_scene;
+    DescriptorPool* p_descriptor;
 
 private:
     double lastTime {};
@@ -53,5 +54,4 @@ private:
     int numFrames {};
     float frameTime {};
     bool m_resized { false };
-    VkDescriptorPool m_pool;
 };

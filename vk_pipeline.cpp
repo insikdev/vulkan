@@ -1,7 +1,7 @@
 #include "pch.h"
-#include "pipeline.h"
-#include "device.h"
-#include "swap_chain.h"
+#include "vk_pipeline.h"
+#include "vk_device.h"
+#include "vk_swap_chain.h"
 #include "shader.h"
 
 Pipeline::Pipeline(const Device* pDevice, const SwapChain* pSwapChain)

@@ -4,6 +4,8 @@ class Device;
 class SwapChain;
 class Pipeline;
 class Scene;
+class CommandPool;
+class CommandBuffer;
 
 class Renderer {
 public:
@@ -30,6 +32,7 @@ private:
     Device* p_device;
     SwapChain* p_swapChain;
     const Pipeline* p_pipeline;
+    CommandPool* p_commandPool;
 
 private:
     enum { MAX_FRAMES_IN_FLIGHT = 1 };
@@ -44,6 +47,7 @@ private:
     // std::vector<VkSemaphore> renderFinishedSemaphores { MAX_FRAMES_IN_FLIGHT };
     // std::vector<VkFence> inFlightFences { MAX_FRAMES_IN_FLIGHT };
     // uint32_t m_currentFrame {};
+    std::vector<CommandBuffer> m_commandBuffers;
 
 private:
     VkDescriptorPool m_descriptorPool;

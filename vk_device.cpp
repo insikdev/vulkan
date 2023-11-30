@@ -1,8 +1,8 @@
 #include "pch.h"
-#include "device.h"
-#include "instance.h"
-#include "surface.h"
-#include "swap_chain.h"
+#include "vk_device.h"
+#include "vk_instance.h"
+#include "vk_surface.h"
+#include "vk_swap_chain.h"
 #include "query.h"
 
 Device::Device(const Instance* pInstance, const Surface* pSurface, const std::vector<const char*>& extensions)
@@ -12,104 +12,26 @@ Device::Device(const Instance* pInstance, const Surface* pSurface, const std::ve
 {
     SelectPhysicalDevice();
     CreateLogicalDevice();
-    CreateCommandPool();
 }
 
 Device::~Device()
 {
-    /*
-     * VkPhysicalDevice will be implicitly destroyed when the VkInstance is destroyed.
-     */
-    vkDestroyCommandPool(m_device, m_commandPool, 0);
+    // VkPhysicalDevice will be implicitly destroyed when the VkInstance is destroyed.
     vkDestroyDevice(m_device, nullptr);
 }
 
-void Device::AllocateCommandBuffers(uint32_t count)
+uint32_t Device::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags memoryPropertyFlags) const
 {
-    VkCommandBufferAllocateInfo allocInfo {};
-    {
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.commandPool = m_commandPool;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandBufferCount = count;
+    VkPhysicalDeviceMemoryProperties memoryProperties {};
+    vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &memoryProperties);
+
+    for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++) {
+        if ((typeFilter & (1 << i)) && (memoryProperties.memoryTypes[i].propertyFlags & memoryPropertyFlags) == memoryPropertyFlags) {
+            return i;
+        }
     }
 
-    m_commandBuffers.resize(count);
-
-    VkResult result = vkAllocateCommandBuffers(m_device, &allocInfo, m_commandBuffers.data());
-    CHECK_VK(result);
-}
-
-void Device::CreateBuffer(VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, VkBuffer& buffer, VkDeviceMemory& deviceMemory) const
-{
-    VkBufferCreateInfo bufferInfo {};
-    {
-        bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        bufferInfo.size = size;
-        bufferInfo.usage = usage;
-        bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    }
-
-    VkResult result = vkCreateBuffer(m_device, &bufferInfo, nullptr, &buffer);
-    CHECK_VK(result);
-
-    VkMemoryRequirements memRequirements {};
-    vkGetBufferMemoryRequirements(m_device, buffer, &memRequirements);
-
-    VkMemoryAllocateInfo allocInfo {};
-    {
-        allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
-        allocInfo.allocationSize = memRequirements.size;
-        allocInfo.memoryTypeIndex = FindMemoryType(memRequirements.memoryTypeBits, properties);
-    }
-
-    result = vkAllocateMemory(m_device, &allocInfo, nullptr, &deviceMemory);
-    CHECK_VK(result);
-
-    vkBindBufferMemory(m_device, buffer, deviceMemory, 0);
-}
-
-void Device::CopyBuffer(VkBuffer srcBuffer, VkBuffer dstBuffer, VkDeviceSize size) const
-{
-    VkCommandBufferAllocateInfo allocInfo {};
-    {
-        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-        allocInfo.commandPool = m_commandPool;
-        allocInfo.commandBufferCount = 1;
-    }
-
-    VkCommandBuffer commandBuffer;
-    vkAllocateCommandBuffers(m_device, &allocInfo, &commandBuffer);
-
-    VkCommandBufferBeginInfo beginInfo {};
-    {
-        beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-        beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    }
-
-    vkBeginCommandBuffer(commandBuffer, &beginInfo);
-
-    VkBufferCopy copyRegion {};
-    {
-        copyRegion.srcOffset = 0;
-        copyRegion.dstOffset = 0;
-        copyRegion.size = size;
-    }
-
-    vkCmdCopyBuffer(commandBuffer, srcBuffer, dstBuffer, 1, &copyRegion);
-    vkEndCommandBuffer(commandBuffer);
-
-    VkSubmitInfo submitInfo {};
-    {
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = &commandBuffer;
-    }
-
-    vkQueueSubmit(m_graphicsQueue, 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(m_graphicsQueue);
-    vkFreeCommandBuffers(m_device, m_commandPool, 1, &commandBuffer);
+    throw std::runtime_error("failed to find suitable memory type!");
 }
 
 void Device::CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) const
@@ -219,19 +141,6 @@ void Device::CreateLogicalDevice()
     vkGetDeviceQueue(m_device, m_queueFamilyIndices.presentFamily, 0, &m_presentQueue);
 }
 
-void Device::CreateCommandPool()
-{
-    VkCommandPoolCreateInfo poolInfo {};
-    {
-        poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-        poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
-        poolInfo.queueFamilyIndex = m_queueFamilyIndices.graphicsFamily;
-    }
-
-    VkResult result = vkCreateCommandPool(m_device, &poolInfo, nullptr, &m_commandPool);
-    CHECK_VK(result);
-}
-
 bool Device::IsDeviceSuitable(VkPhysicalDevice physicalDevice)
 {
     VkPhysicalDeviceProperties properties {};
@@ -275,20 +184,6 @@ bool Device::CheckDeviceExtensionSupport(VkPhysicalDevice physicalDevice)
     }
 
     return requiredExtensions.empty();
-}
-
-uint32_t Device::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) const
-{
-    VkPhysicalDeviceMemoryProperties memProperties {};
-    vkGetPhysicalDeviceMemoryProperties(m_physicalDevice, &memProperties);
-
-    for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
-        if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
-            return i;
-        }
-    }
-
-    throw std::runtime_error("failed to find suitable memory type!");
 }
 
 QueueFamilyIndices Device::FindQueueFamily(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface)

@@ -14,7 +14,7 @@ public:
     Mat4 GetProjectionMatrix() { return glm::perspective(m_fov, m_aspect, m_near, m_far); }
 
 public:
-    Vec3 m_position { Vec3 { 2.0f, 2.0f, 2.0f } };
+    Vec3 m_position { Vec3 { 0.0f, 0.0f, 5.0f } };
     Vec3 m_target { Vec3 { 0.0f, 0.0f, 0.0f } };
     Vec3 m_up { Vec3 { 0.0f, -1.0f, 0.0f } };
 

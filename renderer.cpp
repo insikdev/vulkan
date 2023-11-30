@@ -1,14 +1,17 @@
 #include "pch.h"
 #include "renderer.h"
-#include "device.h"
-#include "swap_chain.h"
-#include "pipeline.h"
+#include "vk_device.h"
+#include "vk_swap_chain.h"
+#include "vk_pipeline.h"
 #include "scene.h"
 #include "model.h"
 #include "camera.h"
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_vulkan.h>
+#include "vk_command_pool.h"
+#include "vk_command_buffer.h"
+#include "vk_buffer.h"
 
 Renderer::Renderer(Device* pDevice, SwapChain* pSwapChain, const Pipeline* pPipeline)
     : p_device { pDevice }
@@ -16,7 +19,12 @@ Renderer::Renderer(Device* pDevice, SwapChain* pSwapChain, const Pipeline* pPipe
     , p_pipeline { pPipeline }
 {
     p_swapChain->CreateFrameBuffer(p_pipeline->GetRenderPass());
-    p_device->AllocateCommandBuffers(MAX_FRAMES_IN_FLIGHT);
+    p_commandPool = new CommandPool { p_device };
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        m_commandBuffers.push_back(p_commandPool->AllocateCommandBuffer());
+    }
+
+    // p_device->AllocateCommandBuffers(MAX_FRAMES_IN_FLIGHT);
     CreateSyncObjects();
     createDescriptorPool();
 }
@@ -40,6 +48,8 @@ Renderer::~Renderer()
     vkDestroySemaphore(p_device->GetDevice(), imageAvailableSemaphore, nullptr);
     vkDestroySemaphore(p_device->GetDevice(), renderFinishedSemaphore, nullptr);
     vkDestroyFence(p_device->GetDevice(), inFlightFence, nullptr);
+
+    delete p_commandPool;
 }
 
 void Renderer::Update(const Scene* pScene, float dt)
@@ -70,7 +80,7 @@ void Renderer::Render(const Scene* pScene)
     vkResetFences(p_device->GetDevice(), 1, &inFlightFence);
 
     // VkCommandBuffer commandBuffer = p_command->GetCommandBuffer(m_currentFrame);
-    VkCommandBuffer commandBuffer = p_device->GetCommandBuffer(0);
+    VkCommandBuffer commandBuffer = m_commandBuffers[0].GetHandle();
 
     RecordCommandBuffer(commandBuffer, imageIndex, pScene);
 
@@ -279,11 +289,11 @@ void Renderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t image
 
     for (const auto& model : pScene->GetModels()) {
 
-        auto dstSet = createDescriptorSet(p_pipeline->GetDescriptorSetLayouts());
         model->Bind(commandBuffer);
 
+        auto dstSet = createDescriptorSet(p_pipeline->GetDescriptorSetLayouts());
         VkDescriptorBufferInfo bufferInfo {};
-        bufferInfo.buffer = model->m_uniformBuffer;
+        bufferInfo.buffer = model->m_uniform->GetBuffer();
         bufferInfo.offset = 0;
         bufferInfo.range = sizeof(ModelUniform);
 
@@ -308,15 +318,13 @@ void Renderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t image
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    // ImGui::ShowDemoWindow();
-    {
-        ImGui::Begin("Camera");
-        ImGui::SliderFloat("x", &pScene->p_camera->m_position.x, -10.0f, 10.0f);
-        ImGui::SliderFloat("y", &pScene->p_camera->m_position.y, -10.0f, 10.0f);
-        ImGui::SliderFloat("z", &pScene->p_camera->m_position.z, -10.0f, 10.0f);
+    ImGui::Begin("Camera");
 
-        ImGui::End();
-    }
+    ImGui::SliderFloat("x", &pScene->p_camera->m_position.x, -10.0f, 10.0f);
+    ImGui::SliderFloat("y", &pScene->p_camera->m_position.y, -10.0f, 10.0f);
+    ImGui::SliderFloat("z", &pScene->p_camera->m_position.z, -10.0f, 10.0f);
+
+    ImGui::End();
 
     ImGui::Render();
     ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), commandBuffer);

@@ -2,6 +2,7 @@
 
 #include "transform.h"
 class Device;
+class Buffer;
 
 class Model {
 public:
@@ -13,9 +14,7 @@ public:
     Model& operator=(Model&&) = delete;
 
 public: // getter
-    inline VkBuffer GetVertexBuffer() const { return m_vertexBuffer; }
-    inline VkBuffer GetIndexBuffer() const { return m_indexBuffer; }
-    inline uint32_t GetIndexCount() const { return m_indexCount; }
+    uint32_t GetIndexCount() const { return m_indexCount; }
 
 public:
     void Update(float dt);
@@ -33,14 +32,9 @@ private:
     const Device* p_device;
 
 public:
-    uint32_t m_indexCount;
-    VkBuffer m_indexBuffer;
-    VkBuffer m_vertexBuffer;
-    VkBuffer m_uniformBuffer;
-    VkDeviceMemory m_indexBufferMemory;
-    VkDeviceMemory m_vertexBufferMemory;
-    VkDeviceMemory m_uniformBufferMemory;
     Transform m_transform;
-
-private:
+    uint32_t m_indexCount;
+    Buffer* m_vertexBuffer;
+    Buffer* m_index;
+    Buffer* m_uniform;
 };

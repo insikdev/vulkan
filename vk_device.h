@@ -20,10 +20,7 @@ public:
     Device& operator=(Device&&) = delete;
 
 public:
-    void AllocateCommandBuffers(uint32_t count);
-    VkCommandBuffer GetCommandBuffer(uint32_t i) { return m_commandBuffers[i]; }
-    void CreateBuffer(VkDeviceSize, VkBufferUsageFlags, VkMemoryPropertyFlags, VkBuffer&, VkDeviceMemory&) const;
-    void CopyBuffer(VkBuffer, VkBuffer, VkDeviceSize) const;
+    uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags) const;
     void CreateImage(uint32_t width, uint32_t height, VkFormat format, VkImageTiling tiling, VkImageUsageFlags usage, VkMemoryPropertyFlags properties, VkImage& image, VkDeviceMemory& imageMemory) const;
     VkImageView CreateImageView(VkImage image, VkFormat format, VkImageAspectFlags aspectFlags) const;
 
@@ -33,17 +30,12 @@ public: // getter
     VkQueue GetQueue() const { return m_graphicsQueue; }
     VkQueue GetPresentQueue() const { return m_presentQueue; }
     QueueFamilyIndices GetQueueFamilyIndices() const { return m_queueFamilyIndices; }
-    VkCommandPool GetCommandPool() { return m_commandPool; }
 
 private:
     void SelectPhysicalDevice();
     void CreateLogicalDevice();
-    void CreateCommandPool();
-
-private:
     bool IsDeviceSuitable(VkPhysicalDevice);
     bool CheckDeviceExtensionSupport(VkPhysicalDevice);
-    uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags) const;
     QueueFamilyIndices FindQueueFamily(VkPhysicalDevice, VkSurfaceKHR);
 
 private:
@@ -57,7 +49,4 @@ private:
     VkQueue m_graphicsQueue;
     VkQueue m_presentQueue;
     std::vector<const char*> m_requiredExtensions;
-    //
-    VkCommandPool m_commandPool;
-    std::vector<VkCommandBuffer> m_commandBuffers;
 };

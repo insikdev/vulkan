@@ -14,7 +14,7 @@
     <Filter Include="Source Files\renderer">
       <UniqueIdentifier>{a2a2c526-fa44-438f-b418-12033a579832}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\wrapper">
+    <Filter Include="Source Files\vulkan wrapper">
       <UniqueIdentifier>{cc3abbb3-366c-4085-8eba-9aa5f7eb19d4}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -43,23 +43,35 @@
     <ClCompile Include="transform.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="device.cpp">
-      <Filter>Source Files\wrapper</Filter>
+    <ClCompile Include="vk_window.cpp">
+      <Filter>Source Files\vulkan wrapper</Filter>
     </ClCompile>
-    <ClCompile Include="instance.cpp">
-      <Filter>Source Files\wrapper</Filter>
+    <ClCompile Include="vk_command_buffer.cpp">
+      <Filter>Source Files\vulkan wrapper</Filter>
     </ClCompile>
-    <ClCompile Include="pipeline.cpp">
-      <Filter>Source Files\wrapper</Filter>
+    <ClCompile Include="vk_command_pool.cpp">
+      <Filter>Source Files\vulkan wrapper</Filter>
     </ClCompile>
-    <ClCompile Include="surface.cpp">
-      <Filter>Source Files\wrapper</Filter>
+    <ClCompile Include="vk_descriptor_pool.cpp">
+      <Filter>Source Files\vulkan wrapper</Filter>
     </ClCompile>
-    <ClCompile Include="swap_chain.cpp">
-      <Filter>Source Files\wrapper</Filter>
+    <ClCompile Include="vk_device.cpp">
+      <Filter>Source Files\vulkan wrapper</Filter>
     </ClCompile>
-    <ClCompile Include="window.cpp">
-      <Filter>Source Files\wrapper</Filter>
+    <ClCompile Include="vk_instance.cpp">
+      <Filter>Source Files\vulkan wrapper</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_pipeline.cpp">
+      <Filter>Source Files\vulkan wrapper</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_surface.cpp">
+      <Filter>Source Files\vulkan wrapper</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_swap_chain.cpp">
+      <Filter>Source Files\vulkan wrapper</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_buffer.cpp">
+      <Filter>Source Files\vulkan wrapper</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -107,26 +119,38 @@
     <ClInclude Include="transform.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="device.h">
-      <Filter>Source Files\wrapper</Filter>
-    </ClInclude>
-    <ClInclude Include="instance.h">
-      <Filter>Source Files\wrapper</Filter>
-    </ClInclude>
-    <ClInclude Include="pipeline.h">
-      <Filter>Source Files\wrapper</Filter>
-    </ClInclude>
-    <ClInclude Include="surface.h">
-      <Filter>Source Files\wrapper</Filter>
-    </ClInclude>
-    <ClInclude Include="swap_chain.h">
-      <Filter>Source Files\wrapper</Filter>
-    </ClInclude>
-    <ClInclude Include="window.h">
-      <Filter>Source Files\wrapper</Filter>
-    </ClInclude>
     <ClInclude Include="query.h">
       <Filter>Source Files\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_swap_chain.h">
+      <Filter>Source Files\vulkan wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_window.h">
+      <Filter>Source Files\vulkan wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_command_buffer.h">
+      <Filter>Source Files\vulkan wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_command_pool.h">
+      <Filter>Source Files\vulkan wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_descriptor_pool.h">
+      <Filter>Source Files\vulkan wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_device.h">
+      <Filter>Source Files\vulkan wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_instance.h">
+      <Filter>Source Files\vulkan wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_pipeline.h">
+      <Filter>Source Files\vulkan wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_surface.h">
+      <Filter>Source Files\vulkan wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_buffer.h">
+      <Filter>Source Files\vulkan wrapper</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
