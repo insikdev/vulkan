@@ -40,12 +40,18 @@ App::App()
 
     auto cube1 = new Model(p_device, Geometry::CreateCube());
     auto cube2 = new Model(p_device, Geometry::CreateCube());
+    auto cube3 = new Model(p_device, Geometry::CreateCube());
     cube2->m_transform.m_position.x = -1.0f;
     cube2->m_transform.m_position.y = -2.0f;
     cube2->m_transform.m_position.z = -3.0f;
+    cube3->m_transform.m_position.x = 1.0f;
+    cube3->m_transform.m_position.y = 2.0f;
+    cube3->m_transform.m_position.z = 3.0f;
     p_scene->AddModel(cube1);
     p_scene->AddModel(cube2);
+    p_scene->AddModel(cube3);
 
+    p_renderer->SetScene(p_scene);
     InitGui();
 }
 
@@ -75,8 +81,8 @@ void App::Run()
         } else {
             glfwPollEvents();
 
-            p_renderer->Update(p_scene, frameTime);
-            p_renderer->Render(p_scene);
+            p_renderer->Update(frameTime);
+            p_renderer->Render();
         }
         CalculateFrameRate();
     }

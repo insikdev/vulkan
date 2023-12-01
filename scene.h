@@ -13,13 +13,13 @@ public:
     Scene& operator=(Scene&&) = delete;
 
 public:
-    void AddModel(const Model*);
-    std::vector<const Model*> GetModels() const { return m_models; }
+    void AddModel(Model*);
+    std::vector<Model*> GetModels() const { return m_models; }
     CameraUniform GetViewProjMatrix(void) const;
 
 public:
     Camera* p_camera;
 
 private:
-    std::vector<const Model*> m_models;
+    std::vector<Model*> m_models;
 };

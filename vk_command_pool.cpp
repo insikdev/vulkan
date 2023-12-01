@@ -38,7 +38,7 @@ void CommandPool::FreeCommandBuffer(CommandBuffer& commandBuffer)
     vkFreeCommandBuffers(p_device->GetDevice(), m_pool, 1, commandBuffer.GetPtr());
 }
 
-inline void CommandPool::CreatePool()
+void CommandPool::CreatePool()
 {
     VkCommandPoolCreateInfo poolInfo {};
     {

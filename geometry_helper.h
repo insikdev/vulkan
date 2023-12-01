@@ -14,14 +14,14 @@ public:
             { { -0.5f, 0.5f, 0.0f }, { 0.0f, 0.0f, 1.0f } },
         };
         out.indices = { 0, 1, 2 };
-
         return out;
     }
 
     /*
      * vertex : POSITION + COLOR
      */
-    static MeshData CreateRectangle()
+    static MeshData
+    CreateRectangle()
     {
         MeshData out;
         out.vertices = {

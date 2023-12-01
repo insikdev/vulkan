@@ -8,7 +8,7 @@ public:
     ~DescriptorPool();
 
 public:
-    VkDescriptorSet AllocateDescriptorSet();
+    VkDescriptorSet AllocateDescriptorSet(const std::vector<VkDescriptorSetLayout>&);
 
 public: // getter
     VkDescriptorPool GetPool() { return m_pool; }

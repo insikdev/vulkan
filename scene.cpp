@@ -17,7 +17,7 @@ Scene::~Scene()
     }
 }
 
-void Scene::AddModel(const Model* model)
+void Scene::AddModel(Model* model)
 {
     m_models.push_back(model);
 }

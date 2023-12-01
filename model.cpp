@@ -37,6 +37,33 @@ Mat4 Model::GetWorldMatrix() const
     return m_transform.GetWorldMatrix();
 }
 
+void Model::SetDescriptorSet(VkDescriptorSet descriptorSet)
+{
+    m_descriptorSet = descriptorSet;
+
+    VkDescriptorBufferInfo bufferInfo {};
+    {
+        bufferInfo.buffer = m_uniform->GetBuffer();
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(ModelUniform);
+    }
+
+    VkWriteDescriptorSet descriptorWrite {};
+    {
+        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        descriptorWrite.dstSet = m_descriptorSet;
+        descriptorWrite.dstBinding = 0;
+        descriptorWrite.dstArrayElement = 0;
+        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        descriptorWrite.descriptorCount = 1;
+        descriptorWrite.pBufferInfo = &bufferInfo;
+        descriptorWrite.pImageInfo = nullptr; // Optional
+        descriptorWrite.pTexelBufferView = nullptr; // Optional
+    }
+
+    vkUpdateDescriptorSets(p_device->GetDevice(), 1, &descriptorWrite, 0, nullptr);
+}
+
 void Model::Update(float dt)
 {
     // m_transform.RotateX(dt);
