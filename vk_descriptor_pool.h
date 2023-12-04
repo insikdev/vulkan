@@ -4,7 +4,7 @@ class Device;
 
 class DescriptorPool {
 public:
-    DescriptorPool(const Device*, const std::vector<VkDescriptorPoolSize>&);
+    DescriptorPool(const Device*, const std::vector<VkDescriptorPoolSize>&, uint32_t maxSets);
     ~DescriptorPool();
 
 public:
@@ -14,7 +14,7 @@ public: // getter
     VkDescriptorPool GetPool() { return m_pool; }
 
 private:
-    void CreatePool(const std::vector<VkDescriptorPoolSize>&);
+    void CreatePool(const std::vector<VkDescriptorPoolSize>&, uint32_t maxSets);
 
 private:
     const Device* p_device;

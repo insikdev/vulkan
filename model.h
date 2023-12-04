@@ -21,7 +21,7 @@ public:
     void Bind(VkCommandBuffer) const;
     void Draw(VkCommandBuffer) const;
     Mat4 GetWorldMatrix() const;
-    void SetDescriptorSet(VkDescriptorSet);
+    void SetDescriptorSet(VkDescriptorSet, VkImageView, VkSampler);
 
 private:
     void CreateVertexBuffer(const std::vector<Vertex>&);

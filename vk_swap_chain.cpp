@@ -44,9 +44,8 @@ void SwapChain::CreateFrameBuffer(VkRenderPass renderPass)
     for (size_t i = 0; i < m_frameBuffers.size(); i++) {
         std::array<VkImageView, 2> attachments = { m_imageViews[i], depthImageView };
 
-        VkFramebufferCreateInfo framebufferInfo {};
+        VkFramebufferCreateInfo framebufferInfo { VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO };
         {
-            framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
             framebufferInfo.renderPass = renderPass;
             framebufferInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
             framebufferInfo.pAttachments = attachments.data();
@@ -55,8 +54,7 @@ void SwapChain::CreateFrameBuffer(VkRenderPass renderPass)
             framebufferInfo.layers = 1;
         }
 
-        VkResult result = vkCreateFramebuffer(p_device->GetDevice(), &framebufferInfo, nullptr, &m_frameBuffers[i]);
-        CHECK_VK(result);
+        CHECK_VK(vkCreateFramebuffer(p_device->GetDevice(), &framebufferInfo, nullptr, &m_frameBuffers[i]));
     }
 }
 
@@ -122,15 +120,12 @@ void SwapChain::SelectCapabilities()
 
 void SwapChain::CreateSwapChain()
 {
-    VkResult result;
-
     QueueFamilyIndices indices = p_device->GetQueueFamilyIndices();
     uint32_t queueFamilyIndices[] = { indices.graphicsFamily, indices.presentFamily };
     assert(indices.isComplete());
 
-    VkSwapchainCreateInfoKHR createInfo {};
+    VkSwapchainCreateInfoKHR createInfo { VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR };
     {
-        createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
         createInfo.surface = p_surface->GetSurface();
         createInfo.minImageCount = m_imageCount;
         createInfo.imageFormat = m_surfaceFormat.format;
@@ -155,30 +150,23 @@ void SwapChain::CreateSwapChain()
         }
     }
 
-    result = vkCreateSwapchainKHR(p_device->GetDevice(), &createInfo, nullptr, &m_swapChain);
-    CHECK_VK(result);
+    CHECK_VK(vkCreateSwapchainKHR(p_device->GetDevice(), &createInfo, nullptr, &m_swapChain));
 }
 
 void SwapChain::CreateImageViews()
 {
-    VkResult result;
+    uint32_t count = 0;
 
-    uint32_t imageCount = 0;
-    std::vector<VkImage> images;
+    CHECK_VK(vkGetSwapchainImagesKHR(p_device->GetDevice(), m_swapChain, &count, nullptr));
+    assert(count != 0);
 
-    result = vkGetSwapchainImagesKHR(p_device->GetDevice(), m_swapChain, &imageCount, nullptr);
-    CHECK_VK(result);
-    assert(imageCount != 0);
-
-    images.resize(imageCount);
-    vkGetSwapchainImagesKHR(p_device->GetDevice(), m_swapChain, &imageCount, images.data());
-    CHECK_VK(result);
+    std::vector<VkImage> images { count };
+    CHECK_VK(vkGetSwapchainImagesKHR(p_device->GetDevice(), m_swapChain, &count, images.data()));
 
     m_imageViews.resize(images.size());
 
     for (size_t i = 0; i < images.size(); i++) {
-        VkImageViewCreateInfo createInfo {};
-        createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+        VkImageViewCreateInfo createInfo { VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO };
         createInfo.image = images[i];
         createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
         createInfo.format = m_surfaceFormat.format;
@@ -192,8 +180,7 @@ void SwapChain::CreateImageViews()
         createInfo.subresourceRange.baseArrayLayer = 0;
         createInfo.subresourceRange.layerCount = 1;
 
-        result = vkCreateImageView(p_device->GetDevice(), &createInfo, nullptr, &m_imageViews[i]);
-        CHECK_VK(result);
+        CHECK_VK(vkCreateImageView(p_device->GetDevice(), &createInfo, nullptr, &m_imageViews[i]));
     }
 }
 

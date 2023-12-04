@@ -73,6 +73,12 @@
     <ClCompile Include="vk_buffer.cpp">
       <Filter>Source Files\vulkan wrapper</Filter>
     </ClCompile>
+    <ClCompile Include="vk_image.cpp">
+      <Filter>Source Files\vulkan wrapper</Filter>
+    </ClCompile>
+    <ClCompile Include="vk_resource.cpp">
+      <Filter>Source Files\vulkan wrapper</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include=".clang-format" />
@@ -150,6 +156,12 @@
       <Filter>Source Files\vulkan wrapper</Filter>
     </ClInclude>
     <ClInclude Include="vk_buffer.h">
+      <Filter>Source Files\vulkan wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_image.h">
+      <Filter>Source Files\vulkan wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="vk_resource.h">
       <Filter>Source Files\vulkan wrapper</Filter>
     </ClInclude>
   </ItemGroup>

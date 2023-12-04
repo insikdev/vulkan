@@ -7,9 +7,8 @@
       "name": "imgui",
       "features": [ "glfw-binding", "vulkan-binding" ]
     },
-    {
-      "name": "glfw3",
-      "features": []
-    }
+    "glfw3",
+    "stb",
+    "glm"
   ]
 }

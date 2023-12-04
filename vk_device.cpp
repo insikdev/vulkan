@@ -114,8 +114,7 @@ void Device::CreateLogicalDevice()
 
     float queuePriority = 1.0f;
     for (uint32_t queueFamily : uniqueQueueFamilies) {
-        VkDeviceQueueCreateInfo queueCreateInfo {};
-        queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+        VkDeviceQueueCreateInfo queueCreateInfo { VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO };
         queueCreateInfo.queueFamilyIndex = queueFamily;
         queueCreateInfo.queueCount = 1;
         queueCreateInfo.pQueuePriorities = &queuePriority;
@@ -123,10 +122,12 @@ void Device::CreateLogicalDevice()
     }
 
     VkPhysicalDeviceFeatures deviceFeatures {};
-
-    VkDeviceCreateInfo deviceCreateInfo {};
     {
-        deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+        deviceFeatures.samplerAnisotropy = VK_TRUE;
+    }
+
+    VkDeviceCreateInfo deviceCreateInfo { VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO };
+    {
         deviceCreateInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
         deviceCreateInfo.pQueueCreateInfos = queueCreateInfos.data();
         deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(m_requiredExtensions.size());
@@ -134,8 +135,7 @@ void Device::CreateLogicalDevice()
         deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
     }
 
-    VkResult result = vkCreateDevice(m_physicalDevice, &deviceCreateInfo, nullptr, &m_device);
-    CHECK_VK(result);
+    CHECK_VK(vkCreateDevice(m_physicalDevice, &deviceCreateInfo, nullptr, &m_device));
 
     vkGetDeviceQueue(m_device, m_queueFamilyIndices.graphicsFamily, 0, &m_graphicsQueue);
     vkGetDeviceQueue(m_device, m_queueFamilyIndices.presentFamily, 0, &m_presentQueue);
@@ -162,7 +162,15 @@ bool Device::IsDeviceSuitable(VkPhysicalDevice physicalDevice)
         return false;
     }
 
-    if (Query::GetSurfaceFormats(physicalDevice, p_surface->GetSurface()).empty() || Query::GetPresentModes(physicalDevice, p_surface->GetSurface()).empty()) {
+    if (Query::GetSurfaceFormats(physicalDevice, p_surface->GetSurface()).empty()) {
+        return false;
+    }
+
+    if (Query::GetPresentModes(physicalDevice, p_surface->GetSurface()).empty()) {
+        return false;
+    }
+
+    if (!features.samplerAnisotropy) {
         return false;
     }
 
@@ -198,7 +206,7 @@ QueueFamilyIndices Device::FindQueueFamily(VkPhysicalDevice physicalDevice, VkSu
         }
 
         VkBool32 presentSupport = false;
-        vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &presentSupport);
+        CHECK_VK(vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, i, surface, &presentSupport));
 
         if (presentSupport) {
             indices.presentFamily = i;

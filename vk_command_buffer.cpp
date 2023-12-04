@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "vk_command_buffer.h"
+#include "vk_device.h"
 
 CommandBuffer::CommandBuffer(const Device* pDevice, VkCommandBuffer commandBuffer)
     : p_device { pDevice }

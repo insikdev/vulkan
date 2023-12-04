@@ -28,7 +28,6 @@ App::App()
     p_surface = new Surface { p_window, p_instance };
     p_device = new Device { p_instance, p_surface, m_requiredDeviceExtensions };
     p_swapChain = new SwapChain { p_window, p_surface, p_device };
-
     p_pipeline = new Pipeline { p_device, p_swapChain };
     p_renderer = new Renderer { p_device, p_swapChain, p_pipeline };
 
@@ -149,7 +148,7 @@ void App::InitGui()
     std::vector<VkDescriptorPoolSize> pool_sizes = {
         { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 }
     };
-    p_descriptor = new DescriptorPool { p_device, pool_sizes };
+    p_descriptor = new DescriptorPool { p_device, pool_sizes, 1 };
 
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();

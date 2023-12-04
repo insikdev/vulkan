@@ -13,6 +13,7 @@
 #include "vk_command_buffer.h"
 #include "vk_buffer.h"
 #include "vk_descriptor_pool.h"
+#include "vk_image.h"
 
 Renderer::Renderer(Device* pDevice, SwapChain* pSwapChain, const Pipeline* pPipeline)
     : p_device { pDevice }
@@ -20,24 +21,24 @@ Renderer::Renderer(Device* pDevice, SwapChain* pSwapChain, const Pipeline* pPipe
     , p_pipeline { pPipeline }
 {
     p_swapChain->CreateFrameBuffer(p_pipeline->GetRenderPass());
-    p_commandPool = new CommandPool { p_device };
-    m_commandBuffer = p_commandPool->AllocateCommandBuffer().GetHandle();
-
-    std::vector<VkDescriptorPoolSize> poolSizes {
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 10 },
-    };
-
-    p_descriptorPool = new DescriptorPool { p_device, poolSizes };
-    CreateSyncObjects();
+    InitPerFrame();
+    CreateTextureImage();
+    CreateSampler();
 }
 
 Renderer::~Renderer()
 {
-    vkDestroySemaphore(p_device->GetDevice(), imageAvailableSemaphore, nullptr);
-    vkDestroySemaphore(p_device->GetDevice(), renderFinishedSemaphore, nullptr);
-    vkDestroyFence(p_device->GetDevice(), inFlightFence, nullptr);
+    vkDestroySampler(p_device->GetDevice(), textureSampler, nullptr);
+    vkDestroyImageView(p_device->GetDevice(), imageView, nullptr);
 
-    delete p_commandPool;
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        delete m_frames[i].p_commandPool;
+        vkDestroySemaphore(p_device->GetDevice(), m_frames[i].imageAvailableSemaphore, nullptr);
+        vkDestroySemaphore(p_device->GetDevice(), m_frames[i].renderFinishedSemaphore, nullptr);
+        vkDestroyFence(p_device->GetDevice(), m_frames[i].inFlightFence, nullptr);
+    }
+
+    delete p_image;
     delete p_descriptorPool;
 }
 
@@ -45,9 +46,22 @@ void Renderer::SetScene(Scene* pScene)
 {
     p_scene = pScene;
 
+    if (p_descriptorPool != nullptr) {
+        delete p_descriptorPool;
+    }
+
+    uint32_t numModels = static_cast<uint32_t>(p_scene->GetModels().size());
+
+    std::vector<VkDescriptorPoolSize> poolSizes {
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, numModels },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, numModels },
+    };
+
+    p_descriptorPool = new DescriptorPool { p_device, poolSizes, numModels };
+
     for (auto& model : p_scene->GetModels()) {
         VkDescriptorSet dstSet = p_descriptorPool->AllocateDescriptorSet(p_pipeline->GetDescriptorSetLayouts());
-        model->SetDescriptorSet(dstSet);
+        model->SetDescriptorSet(dstSet, imageView, textureSampler);
     }
 }
 
@@ -60,10 +74,10 @@ void Renderer::Update(float dt)
 
 void Renderer::Render()
 {
-    vkWaitForFences(p_device->GetDevice(), 1, &inFlightFence, VK_TRUE, UINT64_MAX);
+    vkWaitForFences(p_device->GetDevice(), 1, &m_frames[currentFrame].inFlightFence, VK_TRUE, UINT64_MAX);
 
     uint32_t imageIndex;
-    VkResult result = vkAcquireNextImageKHR(p_device->GetDevice(), p_swapChain->GetSwapChain(), UINT64_MAX, imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+    VkResult result = vkAcquireNextImageKHR(p_device->GetDevice(), p_swapChain->GetSwapChain(), UINT64_MAX, m_frames[currentFrame].imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
 
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
         return;
@@ -73,35 +87,33 @@ void Renderer::Render()
         CHECK_VK(result);
     }
 
-    vkResetFences(p_device->GetDevice(), 1, &inFlightFence);
+    vkResetFences(p_device->GetDevice(), 1, &m_frames[currentFrame].inFlightFence);
 
-    VkCommandBuffer commandBuffer = m_commandBuffer;
+    VkCommandBuffer commandBuffer = m_frames[currentFrame].commandBuffer;
 
     RecordCommandBuffer(commandBuffer, imageIndex);
 
-    VkSemaphore waitSemaphores[] = { imageAvailableSemaphore };
+    VkSemaphore waitSemaphores[] = { m_frames[currentFrame].imageAvailableSemaphore };
     VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-    VkSubmitInfo submitInfo {};
+
+    VkSubmitInfo submitInfo { VK_STRUCTURE_TYPE_SUBMIT_INFO };
     {
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.waitSemaphoreCount = 1;
         submitInfo.pWaitSemaphores = waitSemaphores;
         submitInfo.pWaitDstStageMask = waitStages;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = &commandBuffer;
         submitInfo.signalSemaphoreCount = 1;
-        submitInfo.pSignalSemaphores = &renderFinishedSemaphore;
+        submitInfo.pSignalSemaphores = &m_frames[currentFrame].renderFinishedSemaphore;
     }
 
-    result = vkQueueSubmit(p_device->GetQueue(), 1, &submitInfo, inFlightFence);
-    CHECK_VK(result);
+    CHECK_VK(vkQueueSubmit(p_device->GetQueue(), 1, &submitInfo, m_frames[currentFrame].inFlightFence));
 
     VkSwapchainKHR swapChains[] = { p_swapChain->GetSwapChain() };
-    VkPresentInfoKHR presentInfo {};
+    VkPresentInfoKHR presentInfo { VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
     {
-        presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &renderFinishedSemaphore;
+        presentInfo.pWaitSemaphores = &m_frames[currentFrame].renderFinishedSemaphore;
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = swapChains;
         presentInfo.pImageIndices = &imageIndex;
@@ -113,6 +125,8 @@ void Renderer::Render()
         return;
     }
     CHECK_VK(result);
+
+    currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 void Renderer::UpdateSwapChain(SwapChain* pSwapChain)
@@ -121,26 +135,30 @@ void Renderer::UpdateSwapChain(SwapChain* pSwapChain)
     p_swapChain->CreateFrameBuffer(p_pipeline->GetRenderPass());
 }
 
-void Renderer::CreateSyncObjects()
+void Renderer::InitPerFrame()
 {
-    VkResult result;
-    VkSemaphoreCreateInfo semaphoreInfo {};
-    {
-        semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
-    }
+    for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+        CommandPool* cmdPool = new CommandPool { p_device };
+        CommandBuffer cmdBuffer = cmdPool->AllocateCommandBuffer();
 
-    VkFenceCreateInfo fenceInfo {};
-    {
-        fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
-        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-    }
+        m_frames[i].p_commandPool = cmdPool;
+        m_frames[i].commandBuffer = cmdBuffer.GetHandle();
 
-    result = vkCreateSemaphore(p_device->GetDevice(), &semaphoreInfo, nullptr, &imageAvailableSemaphore);
-    CHECK_VK(result);
-    result = vkCreateSemaphore(p_device->GetDevice(), &semaphoreInfo, nullptr, &renderFinishedSemaphore);
-    CHECK_VK(result);
-    result = vkCreateFence(p_device->GetDevice(), &fenceInfo, nullptr, &inFlightFence);
-    CHECK_VK(result);
+        VkSemaphoreCreateInfo semaphoreInfo {};
+        {
+            semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+        }
+
+        VkFenceCreateInfo fenceInfo {};
+        {
+            fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+            fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+        }
+
+        CHECK_VK(vkCreateSemaphore(p_device->GetDevice(), &semaphoreInfo, nullptr, &m_frames[i].imageAvailableSemaphore));
+        CHECK_VK(vkCreateSemaphore(p_device->GetDevice(), &semaphoreInfo, nullptr, &m_frames[i].renderFinishedSemaphore));
+        CHECK_VK(vkCreateFence(p_device->GetDevice(), &fenceInfo, nullptr, &m_frames[i].inFlightFence));
+    }
 }
 
 void Renderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
@@ -218,4 +236,38 @@ void Renderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t image
     vkCmdEndRenderPass(commandBuffer);
     result = vkEndCommandBuffer(commandBuffer);
     CHECK_VK(result);
+}
+
+void Renderer::CreateTextureImage()
+{
+    // p_image = new Image { p_device, "textures/smile.png" };
+    p_image = new Image { p_device, "textures/sample.jpg" };
+
+    imageView = p_image->CreateImageView(VK_FORMAT_R8G8B8A8_SRGB);
+}
+
+void Renderer::CreateSampler()
+{
+    VkPhysicalDeviceProperties properties {};
+    vkGetPhysicalDeviceProperties(p_device->GetPhysicalDevice(), &properties);
+
+    VkSamplerCreateInfo samplerInfo {};
+    samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    samplerInfo.magFilter = VK_FILTER_LINEAR;
+    samplerInfo.minFilter = VK_FILTER_LINEAR;
+    samplerInfo.addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    samplerInfo.anisotropyEnable = VK_TRUE;
+    samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
+    samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
+    samplerInfo.unnormalizedCoordinates = VK_FALSE;
+    samplerInfo.compareEnable = VK_FALSE;
+    samplerInfo.compareOp = VK_COMPARE_OP_ALWAYS;
+    samplerInfo.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    samplerInfo.mipLodBias = 0.0f;
+    samplerInfo.minLod = 0.0f;
+    samplerInfo.maxLod = 0.0f;
+
+    VkResult result = vkCreateSampler(p_device->GetDevice(), &samplerInfo, nullptr, &textureSampler);
 }

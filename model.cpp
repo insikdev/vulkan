@@ -37,9 +37,10 @@ Mat4 Model::GetWorldMatrix() const
     return m_transform.GetWorldMatrix();
 }
 
-void Model::SetDescriptorSet(VkDescriptorSet descriptorSet)
+void Model::SetDescriptorSet(VkDescriptorSet descriptorSet, VkImageView imageView, VkSampler sampler)
 {
     m_descriptorSet = descriptorSet;
+    std::vector<VkWriteDescriptorSet> writes;
 
     VkDescriptorBufferInfo bufferInfo {};
     {
@@ -48,20 +49,38 @@ void Model::SetDescriptorSet(VkDescriptorSet descriptorSet)
         bufferInfo.range = sizeof(ModelUniform);
     }
 
-    VkWriteDescriptorSet descriptorWrite {};
+    VkDescriptorImageInfo imageInfo {};
     {
-        descriptorWrite.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        descriptorWrite.dstSet = m_descriptorSet;
-        descriptorWrite.dstBinding = 0;
-        descriptorWrite.dstArrayElement = 0;
-        descriptorWrite.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        descriptorWrite.descriptorCount = 1;
-        descriptorWrite.pBufferInfo = &bufferInfo;
-        descriptorWrite.pImageInfo = nullptr; // Optional
-        descriptorWrite.pTexelBufferView = nullptr; // Optional
+        imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageInfo.imageView = imageView;
+        imageInfo.sampler = sampler;
     }
 
-    vkUpdateDescriptorSets(p_device->GetDevice(), 1, &descriptorWrite, 0, nullptr);
+    VkWriteDescriptorSet uniformDS {};
+    {
+        uniformDS.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        uniformDS.dstSet = m_descriptorSet;
+        uniformDS.dstBinding = 0;
+        uniformDS.dstArrayElement = 0;
+        uniformDS.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        uniformDS.descriptorCount = 1;
+        uniformDS.pBufferInfo = &bufferInfo;
+    }
+    writes.push_back(uniformDS);
+
+    VkWriteDescriptorSet samplerDS {};
+    {
+        samplerDS.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        samplerDS.dstSet = m_descriptorSet;
+        samplerDS.dstBinding = 1;
+        samplerDS.dstArrayElement = 0;
+        samplerDS.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        samplerDS.descriptorCount = 1;
+        samplerDS.pImageInfo = &imageInfo;
+    }
+    writes.push_back(samplerDS);
+
+    vkUpdateDescriptorSets(p_device->GetDevice(), static_cast<uint32_t>(writes.size()), writes.data(), 0, nullptr);
 }
 
 void Model::Update(float dt)

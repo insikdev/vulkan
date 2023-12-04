@@ -8,8 +8,9 @@
 uint32_t Buffer::s_count = 0;
 CommandPool* Buffer::s_pool = nullptr;
 
-Buffer::Buffer(const Device* pDevice, VkBufferCreateInfo& createInfo, VkMemoryPropertyFlags memoryPropertyFlags)
-    : p_device { pDevice }
+Buffer::Buffer(const Device* pDevice, VkBufferCreateInfo createInfo, VkMemoryPropertyFlags memoryPropertyFlags)
+    : Resource { pDevice }
+    , m_size { createInfo.size }
 {
     if (s_count == 0) {
         s_pool = new CommandPool(pDevice);
@@ -22,7 +23,6 @@ Buffer::Buffer(const Device* pDevice, VkBufferCreateInfo& createInfo, VkMemoryPr
 Buffer::~Buffer()
 {
     vkDestroyBuffer(p_device->GetDevice(), m_buffer, nullptr);
-    vkFreeMemory(p_device->GetDevice(), m_deviceMemory, nullptr);
 
     s_count--;
     if (s_count == 0) {
@@ -30,10 +30,8 @@ Buffer::~Buffer()
     }
 }
 
-void Buffer::CreateBuffer(VkBufferCreateInfo& createInfo, VkMemoryPropertyFlags memoryPropertyFlags)
+void Buffer::CreateBuffer(VkBufferCreateInfo createInfo, VkMemoryPropertyFlags memoryPropertyFlags)
 {
-    m_size = createInfo.size;
-
     VkResult result = vkCreateBuffer(p_device->GetDevice(), &createInfo, nullptr, &m_buffer);
     CHECK_VK(result);
 
@@ -50,42 +48,16 @@ void Buffer::CreateBuffer(VkBufferCreateInfo& createInfo, VkMemoryPropertyFlags 
     result = vkAllocateMemory(p_device->GetDevice(), &allocInfo, nullptr, &m_deviceMemory);
     CHECK_VK(result);
 
-    vkBindBufferMemory(p_device->GetDevice(), m_buffer, m_deviceMemory, 0);
+    result = vkBindBufferMemory(p_device->GetDevice(), m_buffer, m_deviceMemory, 0);
+    CHECK_VK(result);
 }
 
-void Buffer::Copy(VkBuffer srcBuffer)
-{
-    CommandBuffer commandBuffer = s_pool->AllocateCommandBuffer();
-    commandBuffer.Begin();
-
-    VkBufferCopy copyRegion {};
-    {
-        copyRegion.srcOffset = 0;
-        copyRegion.dstOffset = 0;
-        copyRegion.size = m_size;
-    }
-
-    vkCmdCopyBuffer(commandBuffer.GetHandle(), srcBuffer, m_buffer, 1, &copyRegion);
-    commandBuffer.End();
-
-    VkSubmitInfo submitInfo {};
-    {
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-        submitInfo.commandBufferCount = 1;
-        submitInfo.pCommandBuffers = commandBuffer.GetPtr();
-    }
-
-    vkQueueSubmit(p_device->GetQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(p_device->GetQueue());
-    s_pool->FreeCommandBuffer(commandBuffer);
-}
-
-void Buffer::MapMemory()
+void Buffer::MapMemory(void)
 {
     vkMapMemory(p_device->GetDevice(), m_deviceMemory, 0, m_size, 0, &p_host);
 }
 
-void Buffer::UnmapMemory()
+void Buffer::UnmapMemory(void)
 {
     vkUnmapMemory(p_device->GetDevice(), m_deviceMemory);
     p_host = nullptr;
@@ -117,4 +89,19 @@ void Buffer::FlushMappedMemory(void)
 
     VkResult result = vkFlushMappedMemoryRanges(p_device->GetDevice(), 1, &mappedMemoryRange);
     CHECK_VK(result);
+}
+
+void Buffer::Copy(VkBuffer srcBuffer)
+{
+    CommandBuffer commandBuffer = BeginSingleTimeCommand();
+
+    VkBufferCopy copyRegion {};
+    {
+        copyRegion.srcOffset = 0;
+        copyRegion.dstOffset = 0;
+        copyRegion.size = m_size;
+    }
+
+    vkCmdCopyBuffer(commandBuffer.GetHandle(), srcBuffer, m_buffer, 1, &copyRegion);
+    EndSingleTimeCommand(commandBuffer);
 }

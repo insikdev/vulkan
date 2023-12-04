@@ -30,6 +30,7 @@ using Mat4 = glm::mat4;
 struct Vertex {
     Vec3 pos;
     Vec3 color;
+    Vec2 texcoord;
 
     static std::vector<VkVertexInputBindingDescription> GetBindingDescriptions()
     {
@@ -43,7 +44,7 @@ struct Vertex {
     }
     static std::vector<VkVertexInputAttributeDescription> GetAttributeDescriptions()
     {
-        std::vector<VkVertexInputAttributeDescription> descs(2);
+        std::vector<VkVertexInputAttributeDescription> descs(3);
 
         descs[0].binding = 0;
         descs[0].location = 0;
@@ -54,6 +55,11 @@ struct Vertex {
         descs[1].location = 1;
         descs[1].format = VK_FORMAT_R32G32B32_SFLOAT;
         descs[1].offset = offsetof(Vertex, color);
+
+        descs[2].binding = 0;
+        descs[2].location = 2;
+        descs[2].format = VK_FORMAT_R32G32_SFLOAT;
+        descs[2].offset = offsetof(Vertex, texcoord);
 
         return descs;
     }

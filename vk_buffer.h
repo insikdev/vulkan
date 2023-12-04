@@ -1,12 +1,13 @@
 #pragma once
 
+#include "vk_resource.h"
 class Device;
 class CommandPool;
 
-class Buffer {
+class Buffer : public Resource {
 public:
     Buffer() = delete;
-    Buffer(const Device*, VkBufferCreateInfo&, VkMemoryPropertyFlags);
+    Buffer(const Device*, VkBufferCreateInfo, VkMemoryPropertyFlags);
     ~Buffer();
     Buffer(const Buffer&) = delete;
     Buffer(Buffer&&) = delete;
@@ -14,27 +15,22 @@ public:
     Buffer& operator=(Buffer&&) = delete;
 
 public:
-    void Copy(VkBuffer);
     void MapMemory(void);
     void UnmapMemory(void);
     void InvalidateMappedMemory(void);
     void FlushMappedMemory(void);
+    void Copy(VkBuffer);
 
 public: // getter
     VkBuffer GetBuffer() { return m_buffer; }
-    VkDeviceMemory GetDeviceMemory() { return m_deviceMemory; }
     void* GetMappedPtr() { return p_host; }
 
 private:
-    void CreateBuffer(VkBufferCreateInfo&, VkMemoryPropertyFlags);
-
-private:
-    const Device* p_device;
+    void CreateBuffer(VkBufferCreateInfo, VkMemoryPropertyFlags);
 
 private:
     VkDeviceSize m_size;
     VkBuffer m_buffer;
-    VkDeviceMemory m_deviceMemory;
     void* p_host;
 
 private:

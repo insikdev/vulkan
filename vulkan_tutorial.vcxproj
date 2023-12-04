@@ -162,8 +162,10 @@
     <ClCompile Include="vk_command_pool.cpp" />
     <ClCompile Include="vk_descriptor_pool.cpp" />
     <ClCompile Include="vk_device.cpp" />
+    <ClCompile Include="vk_image.cpp" />
     <ClCompile Include="vk_instance.cpp" />
     <ClCompile Include="vk_pipeline.cpp" />
+    <ClCompile Include="vk_resource.cpp" />
     <ClCompile Include="vk_surface.cpp" />
     <ClCompile Include="vk_swap_chain.cpp" />
     <ClCompile Include="vk_window.cpp" />
@@ -193,8 +195,10 @@
     <ClInclude Include="vk_command_pool.h" />
     <ClInclude Include="vk_descriptor_pool.h" />
     <ClInclude Include="vk_device.h" />
+    <ClInclude Include="vk_image.h" />
     <ClInclude Include="vk_instance.h" />
     <ClInclude Include="vk_pipeline.h" />
+    <ClInclude Include="vk_resource.h" />
     <ClInclude Include="vk_surface.h" />
     <ClInclude Include="vk_swap_chain.h" />
     <ClInclude Include="vk_window.h" />

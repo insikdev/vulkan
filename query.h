@@ -5,15 +5,12 @@ public:
     static std::vector<VkPhysicalDevice> GetPhysicalDevices(VkInstance instance)
     {
         uint32_t count = 0;
-        std::vector<VkPhysicalDevice> physicalDevices;
 
-        VkResult result = vkEnumeratePhysicalDevices(instance, &count, nullptr);
-        CHECK_VK(result);
+        CHECK_VK(vkEnumeratePhysicalDevices(instance, &count, nullptr));
         assert(count != 0);
 
-        physicalDevices.resize(count);
-        result = vkEnumeratePhysicalDevices(instance, &count, physicalDevices.data());
-        CHECK_VK(result);
+        std::vector<VkPhysicalDevice> physicalDevices { count };
+        CHECK_VK(vkEnumeratePhysicalDevices(instance, &count, physicalDevices.data()));
 
         return physicalDevices;
     }
@@ -21,12 +18,11 @@ public:
     static std::vector<VkQueueFamilyProperties> GetQueueFamilyProperties(VkPhysicalDevice physicalDevice)
     {
         uint32_t count = 0;
-        std::vector<VkQueueFamilyProperties> queueFamilyProperties;
 
         vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &count, nullptr);
         assert(count != 0);
 
-        queueFamilyProperties.resize(count);
+        std::vector<VkQueueFamilyProperties> queueFamilyProperties { count };
         vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &count, queueFamilyProperties.data());
 
         return queueFamilyProperties;
@@ -34,36 +30,26 @@ public:
 
     static std::vector<VkSurfaceFormatKHR> GetSurfaceFormats(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface)
     {
-        VkResult result;
-
         uint32_t count = 0;
-        std::vector<VkSurfaceFormatKHR> surfaceFormats;
 
-        result = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &count, nullptr);
-        CHECK_VK(result);
+        CHECK_VK(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &count, nullptr));
         assert(count != 0);
 
-        surfaceFormats.resize(count);
-        result = vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &count, surfaceFormats.data());
-        CHECK_VK(result);
+        std::vector<VkSurfaceFormatKHR> surfaceFormats { count };
+        CHECK_VK(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, &count, surfaceFormats.data()));
 
         return surfaceFormats;
     }
 
     static std::vector<VkPresentModeKHR> GetPresentModes(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface)
     {
-        VkResult result;
+        uint32_t count = 0;
 
-        uint32_t count;
-        std::vector<VkPresentModeKHR> presentModes;
-
-        result = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &count, nullptr);
-        CHECK_VK(result);
+        CHECK_VK(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &count, nullptr));
         assert(count != 0);
 
-        presentModes.resize(count);
-        result = vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &count, presentModes.data());
-        CHECK_VK(result);
+        std::vector<VkPresentModeKHR> presentModes { count };
+        CHECK_VK(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, &count, presentModes.data()));
 
         return presentModes;
     }
