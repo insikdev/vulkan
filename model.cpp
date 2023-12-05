@@ -86,8 +86,8 @@ void Model::SetDescriptorSet(VkDescriptorSet descriptorSet, VkImageView imageVie
 void Model::Update(float dt)
 {
     // m_transform.RotateX(dt);
-    // m_transform.RotateY(dt);
-    m_transform.RotateZ(dt);
+    m_transform.RotateY(dt);
+    // m_transform.RotateZ(dt);
     UpdateUniformBuffer();
 }
 
@@ -164,7 +164,8 @@ void Model::CreateUniformbuffer()
     VkBufferCreateInfo createInfo {};
     {
         createInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-        createInfo.size = sizeof(ModelUniform);
+        // createInfo.size = sizeof(ModelUniform);
+        createInfo.size = sizeof(PhongModel);
         createInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
         createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
     }
@@ -176,10 +177,16 @@ void Model::CreateUniformbuffer()
 
 void Model::UpdateUniformBuffer()
 {
-    ModelUniform modelUniformData {};
+    // ModelUniform modelUniformData {};
+    PhongModel modelUniformData {};
     modelUniformData.world = m_transform.GetWorldMatrix();
+    modelUniformData.ambient = ambient;
+    modelUniformData.diffuse = diffuse;
+    modelUniformData.specular = specular;
+    modelUniformData.shininess = shininess;
 
     m_uniform->InvalidateMappedMemory();
-    memcpy(m_uniform->GetMappedPtr(), &modelUniformData, sizeof(ModelUniform));
+    // memcpy(m_uniform->GetMappedPtr(), &modelUniformData, sizeof(ModelUniform));
+    memcpy(m_uniform->GetMappedPtr(), &modelUniformData, sizeof(PhongModel));
     m_uniform->FlushMappedMemory();
 }

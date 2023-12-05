@@ -147,7 +147,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="app.cpp" />
-    <ClCompile Include="camera.cpp" />
     <ClCompile Include="extension.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="model.cpp" />
@@ -157,7 +156,6 @@
     </ClCompile>
     <ClCompile Include="renderer.cpp" />
     <ClCompile Include="scene.cpp" />
-    <ClCompile Include="transform.cpp" />
     <ClCompile Include="vk_buffer.cpp" />
     <ClCompile Include="vk_command_buffer.cpp" />
     <ClCompile Include="vk_command_pool.cpp" />

@@ -39,4 +39,10 @@ public:
     Buffer* m_index;
     Buffer* m_uniform;
     VkDescriptorSet m_descriptorSet;
+
+public: // material
+    Vec3 ambient { Vec3 { 0.3f } };
+    Vec3 diffuse { Vec3 { 0.7f } };
+    Vec3 specular { Vec3 { 1.0f } };
+    float shininess { 256.0f };
 };

@@ -29,7 +29,7 @@ using Mat4 = glm::mat4;
 
 struct Vertex {
     Vec3 pos;
-    Vec3 color;
+    Vec3 normal;
     Vec2 texcoord;
 
     static std::vector<VkVertexInputBindingDescription> GetBindingDescriptions()
@@ -54,7 +54,7 @@ struct Vertex {
         descs[1].binding = 0;
         descs[1].location = 1;
         descs[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        descs[1].offset = offsetof(Vertex, color);
+        descs[1].offset = offsetof(Vertex, normal);
 
         descs[2].binding = 0;
         descs[2].location = 2;
@@ -70,24 +70,22 @@ struct MeshData {
     std::vector<uint32_t> indices;
 };
 
-struct CameraUniform {
-    alignas(16) Mat4 view;
-    alignas(16) Mat4 proj;
+struct ModelUniform {
+    Mat4 world;
 };
 
-struct ModelUniform {
-    alignas(16) Mat4 world;
+struct CommonUniform {
+    Mat4 view;
+    Mat4 proj;
+    alignas(16) Vec3 eyePos;
+    alignas(16) Vec3 lightPos;
+    alignas(16) Vec3 lightDir;
+    alignas(16) Vec3 lightColor;
 };
 
 struct PhongModel : ModelUniform {
-    Vec3 ambient;
-    Vec3 diffuse;
-    Vec3 specular;
+    alignas(16) Vec3 ambient;
+    alignas(16) Vec3 diffuse;
+    alignas(16) Vec3 specular;
     float shininess;
-};
-
-struct LightUniform {
-    Vec3 pos;
-    Vec3 dir;
-    Vec3 color;
 };

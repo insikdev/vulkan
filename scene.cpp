@@ -21,11 +21,3 @@ void Scene::AddModel(Model* model)
 {
     m_models.push_back(model);
 }
-
-CameraUniform Scene::GetViewProjMatrix(void) const
-{
-    CameraUniform out {};
-    out.view = p_camera->GetViewMatrix();
-    out.proj = p_camera->GetProjectionMatrix();
-    return out;
-}

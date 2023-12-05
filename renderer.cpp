@@ -24,6 +24,7 @@ Renderer::Renderer(Device* pDevice, SwapChain* pSwapChain, const Pipeline* pPipe
     InitPerFrame();
     CreateTextureImage();
     CreateSampler();
+    CreateCommonUniform();
 }
 
 Renderer::~Renderer()
@@ -38,6 +39,8 @@ Renderer::~Renderer()
         vkDestroyFence(p_device->GetDevice(), m_frames[i].inFlightFence, nullptr);
     }
 
+    m_uniform->UnmapMemory();
+    delete m_uniform;
     delete p_image;
     delete p_descriptorPool;
 }
@@ -64,13 +67,43 @@ void Renderer::SetScene(Scene* pScene)
         model->SetDescriptorSet(dstSet, imageView, textureSampler);
     }
 
-    VkDescriptorSet dstSet = p_descriptorPool->AllocateDescriptorSet(p_pipeline->GetCommonDescriptorSetLayouts());
-    p_scene->p_camera->SetDescriptorSet(dstSet);
+    m_commonDescriptorSet = p_descriptorPool->AllocateDescriptorSet(p_pipeline->GetCommonDescriptorSetLayouts());
+
+    VkDescriptorBufferInfo bufferInfo {};
+    {
+        bufferInfo.buffer = m_uniform->GetBuffer();
+        bufferInfo.offset = 0;
+        bufferInfo.range = sizeof(CommonUniform);
+    }
+
+    VkWriteDescriptorSet uniformDS {};
+    {
+        uniformDS.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        uniformDS.dstSet = m_commonDescriptorSet;
+        uniformDS.dstBinding = 0;
+        uniformDS.dstArrayElement = 0;
+        uniformDS.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        uniformDS.descriptorCount = 1;
+        uniformDS.pBufferInfo = &bufferInfo;
+    }
+
+    vkUpdateDescriptorSets(p_device->GetDevice(), 1, &uniformDS, 0, nullptr);
 }
 
 void Renderer::Update(float dt)
 {
-    p_scene->p_camera->UpdateUniform();
+    CommonUniform uniformData {};
+    uniformData.view = p_scene->p_camera->GetViewMatrix();
+    uniformData.proj = p_scene->p_camera->GetProjectionMatrix();
+    uniformData.eyePos = p_scene->p_camera->m_position;
+    uniformData.lightPos = p_scene->lightPos;
+    uniformData.lightDir = p_scene->lightDir;
+    uniformData.lightColor = p_scene->lightColor;
+
+    m_uniform->InvalidateMappedMemory();
+    memcpy(m_uniform->GetMappedPtr(), &uniformData, sizeof(CommonUniform));
+    m_uniform->FlushMappedMemory();
+
     for (auto& model : p_scene->GetModels()) {
         model->Update(dt);
     }
@@ -137,6 +170,20 @@ void Renderer::UpdateSwapChain(SwapChain* pSwapChain)
 {
     p_swapChain = pSwapChain;
     p_swapChain->CreateFrameBuffer(p_pipeline->GetRenderPass());
+}
+
+void Renderer::CreateCommonUniform()
+{
+    VkBufferCreateInfo createInfo { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    {
+        createInfo.size = sizeof(CommonUniform);
+        createInfo.usage = VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT;
+        createInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    }
+    VkMemoryPropertyFlags memoryPropertyFlags = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+
+    m_uniform = new Buffer { p_device, createInfo, memoryPropertyFlags };
+    m_uniform->MapMemory();
 }
 
 void Renderer::InitPerFrame()
@@ -215,7 +262,7 @@ void Renderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t image
     /* auto matrix = p_scene->GetViewProjMatrix();
      vkCmdPushConstants(commandBuffer, p_pipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(CameraUniform), &matrix);*/
 
-    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, p_pipeline->GetPipelineLayout(), 1, 1, &p_scene->p_camera->m_descriptorSet, 0, nullptr);
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, p_pipeline->GetPipelineLayout(), 1, 1, &m_commonDescriptorSet, 0, nullptr);
 
     for (int i = 0; i < p_scene->GetModels().size(); i++) {
         Model* model = p_scene->GetModels()[i];
@@ -228,12 +275,37 @@ void Renderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t image
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
 
-    ImGui::Begin("Camera");
-    ImGui::Text("Frame Time : %.2f ms", 1000.0f / ImGui::GetIO().Framerate);
+    if (ImGui::Begin("Settings")) {
+        ImGui::Text("Frame Time : %.2f ms", 1000.0f / ImGui::GetIO().Framerate);
+        ImGui::Text("Camera");
+        ImGui::SliderFloat("x", &p_scene->p_camera->m_position.x, -10.0f, 10.0f);
+        ImGui::SliderFloat("y", &p_scene->p_camera->m_position.y, -10.0f, 10.0f);
+        ImGui::SliderFloat("z", &p_scene->p_camera->m_position.z, -10.0f, 10.0f);
+        ImGui::Separator();
 
-    ImGui::SliderFloat("x", &p_scene->p_camera->m_position.x, -10.0f, 10.0f);
-    ImGui::SliderFloat("y", &p_scene->p_camera->m_position.y, -10.0f, 10.0f);
-    ImGui::SliderFloat("z", &p_scene->p_camera->m_position.z, -10.0f, 10.0f);
+        ImGui::Text("Light");
+        ImGui::SliderFloat("lx", &p_scene->lightPos.x, -10.0f, 10.0f);
+        ImGui::SliderFloat("ly", &p_scene->lightPos.y, -10.0f, 10.0f);
+        ImGui::SliderFloat("lz", &p_scene->lightPos.z, -10.0f, 10.0f);
+        ImGui::Separator();
+
+        ImGui::Text("Model Settings");
+        ImGui::SliderFloat("rx", &p_scene->GetModels()[0]->m_transform.m_rotation.x, -100.0f, 100.0f);
+        ImGui::SliderFloat("ry", &p_scene->GetModels()[0]->m_transform.m_rotation.y, -100.0f, 100.0f);
+        ImGui::SliderFloat("rz", &p_scene->GetModels()[0]->m_transform.m_rotation.z, -100.0f, 100.0f);
+
+        ImGui::SliderFloat("ar", &p_scene->GetModels()[0]->ambient.r, 0.0f, 1.0f);
+        ImGui::SliderFloat("ag", &p_scene->GetModels()[0]->ambient.g, 0.0f, 1.0f);
+        ImGui::SliderFloat("ab", &p_scene->GetModels()[0]->ambient.b, 0.0f, 1.0f);
+
+        ImGui::SliderFloat("dr", &p_scene->GetModels()[0]->diffuse.r, 0.0f, 1.0f);
+        ImGui::SliderFloat("dg", &p_scene->GetModels()[0]->diffuse.g, 0.0f, 1.0f);
+        ImGui::SliderFloat("db", &p_scene->GetModels()[0]->diffuse.b, 0.0f, 1.0f);
+
+        ImGui::SliderFloat("s", &p_scene->GetModels()[0]->shininess, 1.0f, 1000.0f);
+
+        ImGui::Separator();
+    }
 
     ImGui::End();
 

@@ -40,9 +40,6 @@
     <ClCompile Include="scene.cpp">
       <Filter>Source Files\renderer</Filter>
     </ClCompile>
-    <ClCompile Include="transform.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="vk_window.cpp">
       <Filter>Source Files\vulkan wrapper</Filter>
     </ClCompile>
@@ -78,9 +75,6 @@
     </ClCompile>
     <ClCompile Include="vk_resource.cpp">
       <Filter>Source Files\vulkan wrapper</Filter>
-    </ClCompile>
-    <ClCompile Include="camera.cpp">
-      <Filter>Source Files\renderer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -125,9 +119,6 @@
     <ClInclude Include="scene.h">
       <Filter>Source Files\renderer</Filter>
     </ClInclude>
-    <ClInclude Include="transform.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="query.h">
       <Filter>Source Files\utils</Filter>
     </ClInclude>
@@ -166,6 +157,9 @@
     </ClInclude>
     <ClInclude Include="vk_resource.h">
       <Filter>Source Files\vulkan wrapper</Filter>
+    </ClInclude>
+    <ClInclude Include="transform.h">
+      <Filter>Source Files\renderer</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

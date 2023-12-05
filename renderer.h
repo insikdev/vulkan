@@ -8,6 +8,7 @@ class CommandPool;
 class CommandBuffer;
 class DescriptorPool;
 class Image;
+class Buffer;
 
 struct PerFrame {
     CommandPool* p_commandPool;
@@ -31,6 +32,7 @@ public:
     void Update(float dt);
     void Render();
     void UpdateSwapChain(SwapChain*);
+    void CreateCommonUniform();
 
 private:
     void InitPerFrame();
@@ -42,6 +44,10 @@ private: // temp
     Image* p_image;
     VkSampler textureSampler;
     VkImageView imageView;
+
+private: // uniform
+    Buffer* m_uniform;
+    VkDescriptorSet m_commonDescriptorSet;
 
 private:
     Device* p_device;

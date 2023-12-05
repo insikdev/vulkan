@@ -39,12 +39,12 @@ void Pipeline::CreateDescriptorSetLayout()
         modelDescriptorSetLayoutBinding[0].binding = 0;
         modelDescriptorSetLayoutBinding[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         modelDescriptorSetLayoutBinding[0].descriptorCount = 1;
-        modelDescriptorSetLayoutBinding[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        modelDescriptorSetLayoutBinding[0].stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
 
         modelDescriptorSetLayoutBinding[1].binding = 1;
         modelDescriptorSetLayoutBinding[1].descriptorCount = 1;
         modelDescriptorSetLayoutBinding[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        modelDescriptorSetLayoutBinding[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        modelDescriptorSetLayoutBinding[1].stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
     }
 
     VkDescriptorSetLayoutCreateInfo modelDescriptorSetLayoutCreateInfo { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
@@ -62,7 +62,7 @@ void Pipeline::CreateDescriptorSetLayout()
         commonDescriptorSetLayoutBinding[0].binding = 0;
         commonDescriptorSetLayoutBinding[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         commonDescriptorSetLayoutBinding[0].descriptorCount = 1;
-        commonDescriptorSetLayoutBinding[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        commonDescriptorSetLayoutBinding[0].stageFlags = VK_SHADER_STAGE_ALL_GRAPHICS;
     }
 
     VkDescriptorSetLayoutCreateInfo commonDescriptorSetLayoutCreateInfo { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
