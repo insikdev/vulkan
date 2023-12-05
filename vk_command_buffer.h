@@ -15,7 +15,6 @@ private:
 public:
     void Begin();
     void End();
-    void EndAndSubmit();
 
 public: // getter
     VkCommandBuffer GetHandle() const { return m_commandBuffer; }

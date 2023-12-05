@@ -53,20 +53,24 @@ void Renderer::SetScene(Scene* pScene)
     uint32_t numModels = static_cast<uint32_t>(p_scene->GetModels().size());
 
     std::vector<VkDescriptorPoolSize> poolSizes {
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, numModels },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, numModels + 1 },
         { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, numModels },
     };
 
-    p_descriptorPool = new DescriptorPool { p_device, poolSizes, numModels };
+    p_descriptorPool = new DescriptorPool { p_device, poolSizes, numModels + 1 };
 
     for (auto& model : p_scene->GetModels()) {
-        VkDescriptorSet dstSet = p_descriptorPool->AllocateDescriptorSet(p_pipeline->GetDescriptorSetLayouts());
+        VkDescriptorSet dstSet = p_descriptorPool->AllocateDescriptorSet(p_pipeline->GetModelDescriptorSetLayouts());
         model->SetDescriptorSet(dstSet, imageView, textureSampler);
     }
+
+    VkDescriptorSet dstSet = p_descriptorPool->AllocateDescriptorSet(p_pipeline->GetCommonDescriptorSetLayouts());
+    p_scene->p_camera->SetDescriptorSet(dstSet);
 }
 
 void Renderer::Update(float dt)
 {
+    p_scene->p_camera->UpdateUniform();
     for (auto& model : p_scene->GetModels()) {
         model->Update(dt);
     }
@@ -208,8 +212,10 @@ void Renderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t image
     }
     vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-    auto matrix = p_scene->GetViewProjMatrix();
-    vkCmdPushConstants(commandBuffer, p_pipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(CameraUniform), &matrix);
+    /* auto matrix = p_scene->GetViewProjMatrix();
+     vkCmdPushConstants(commandBuffer, p_pipeline->GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(CameraUniform), &matrix);*/
+
+    vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, p_pipeline->GetPipelineLayout(), 1, 1, &p_scene->p_camera->m_descriptorSet, 0, nullptr);
 
     for (int i = 0; i < p_scene->GetModels().size(); i++) {
         Model* model = p_scene->GetModels()[i];
@@ -223,6 +229,7 @@ void Renderer::RecordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t image
     ImGui::NewFrame();
 
     ImGui::Begin("Camera");
+    ImGui::Text("Frame Time : %.2f ms", 1000.0f / ImGui::GetIO().Framerate);
 
     ImGui::SliderFloat("x", &p_scene->p_camera->m_position.x, -10.0f, 10.0f);
     ImGui::SliderFloat("y", &p_scene->p_camera->m_position.y, -10.0f, 10.0f);

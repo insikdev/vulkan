@@ -34,21 +34,21 @@ App::App()
     SetupDebugMessenger();
 
     float aspectRatio = p_swapChain->GetExtent2D().width / static_cast<float>(p_swapChain->GetExtent2D().height);
-    auto camera = new Camera { aspectRatio };
-    p_scene = new Scene { camera };
+
+    p_scene = new Scene { new Camera { p_device, aspectRatio } };
 
     auto cube1 = new Model(p_device, Geometry::CreateCube());
-    auto cube2 = new Model(p_device, Geometry::CreateCube());
-    auto cube3 = new Model(p_device, Geometry::CreateCube());
-    cube2->m_transform.m_position.x = -1.0f;
-    cube2->m_transform.m_position.y = -2.0f;
-    cube2->m_transform.m_position.z = -3.0f;
-    cube3->m_transform.m_position.x = 1.0f;
-    cube3->m_transform.m_position.y = 2.0f;
-    cube3->m_transform.m_position.z = 3.0f;
+    // auto cube2 = new Model(p_device, Geometry::CreateCube());
+    // auto cube3 = new Model(p_device, Geometry::CreateCube());
+    // cube2->m_transform.m_position.x = -1.0f;
+    // cube2->m_transform.m_position.y = -2.0f;
+    // cube2->m_transform.m_position.z = -3.0f;
+    // cube3->m_transform.m_position.x = 1.0f;
+    // cube3->m_transform.m_position.y = 2.0f;
+    // cube3->m_transform.m_position.z = 3.0f;
     p_scene->AddModel(cube1);
-    p_scene->AddModel(cube2);
-    p_scene->AddModel(cube3);
+    // p_scene->AddModel(cube2);
+    // p_scene->AddModel(cube3);
 
     p_renderer->SetScene(p_scene);
     InitGui();
@@ -79,11 +79,9 @@ void App::Run()
             HandleResize();
         } else {
             glfwPollEvents();
-
-            p_renderer->Update(frameTime);
+            p_renderer->Update(ImGui::GetIO().DeltaTime);
             p_renderer->Render();
         }
-        CalculateFrameRate();
     }
 
     vkDeviceWaitIdle(p_device->GetDevice());
@@ -96,24 +94,6 @@ void App::SetupDebugMessenger()
 
     VkResult result = Extension::CreateDebugUtilsMessengerEXT(p_instance->GetInstance(), &createInfo, nullptr, &m_debugMessenger);
     CHECK_VK(result);
-}
-
-void App::CalculateFrameRate()
-{
-    currentTime = glfwGetTime();
-    double delta = currentTime - lastTime;
-
-    if (delta >= 1) {
-        int framerate { std::max(1, int(numFrames / delta)) };
-        std::stringstream title;
-        title << "Running at " << framerate << " fps.";
-        glfwSetWindowTitle(p_window->GetWindow(), title.str().c_str());
-        lastTime = currentTime;
-        numFrames = -1;
-        frameTime = float(1000.0 / framerate);
-    }
-
-    ++numFrames;
 }
 
 void App::HandleResize()
@@ -182,15 +162,14 @@ void App::InitGui()
     ImGui_ImplVulkan_CreateFontsTexture(commandBuffer.GetHandle());
     commandBuffer.End();
 
-    VkSubmitInfo submitInfo {};
+    VkSubmitInfo submitInfo { VK_STRUCTURE_TYPE_SUBMIT_INFO };
     {
-        submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
         submitInfo.commandBufferCount = 1;
         submitInfo.pCommandBuffers = commandBuffer.GetPtr();
     }
 
-    vkQueueSubmit(p_device->GetQueue(), 1, &submitInfo, VK_NULL_HANDLE);
-    vkQueueWaitIdle(p_device->GetQueue());
+    CHECK_VK(vkQueueSubmit(p_device->GetQueue(), 1, &submitInfo, VK_NULL_HANDLE));
+    CHECK_VK(vkQueueWaitIdle(p_device->GetQueue()));
 
     vkDeviceWaitIdle(p_device->GetDevice());
     ImGui_ImplVulkan_DestroyFontUploadObjects();

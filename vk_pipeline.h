@@ -16,10 +16,11 @@ public:
     void UpdateSwapChain(const SwapChain*);
 
 public: // getter
-    inline std::vector<VkDescriptorSetLayout> GetDescriptorSetLayouts() const { return m_descriptorSetLayouts; }
-    inline VkPipelineLayout GetPipelineLayout() const { return m_layout; }
-    inline VkRenderPass GetRenderPass() const { return m_renderPass; }
-    inline VkPipeline GetPipeline() const { return m_pipeline; }
+    VkDescriptorSetLayout GetModelDescriptorSetLayouts() const { return m_descriptorSetLayouts[0]; }
+    VkDescriptorSetLayout GetCommonDescriptorSetLayouts() const { return m_descriptorSetLayouts[1]; }
+    VkPipelineLayout GetPipelineLayout() const { return m_layout; }
+    VkRenderPass GetRenderPass() const { return m_renderPass; }
+    VkPipeline GetPipeline() const { return m_pipeline; }
 
 private:
     void CreateDescriptorSetLayout();

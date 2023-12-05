@@ -21,7 +21,6 @@ public:
 
 private:
     void SetupDebugMessenger();
-    void CalculateFrameRate();
     void HandleResize();
     void InitGui();
 
@@ -49,9 +48,5 @@ private:
     DescriptorPool* p_descriptor;
 
 private:
-    double lastTime {};
-    double currentTime {};
-    int numFrames {};
-    float frameTime {};
     bool m_resized { false };
 };

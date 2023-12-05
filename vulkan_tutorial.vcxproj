@@ -147,6 +147,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="app.cpp" />
+    <ClCompile Include="camera.cpp" />
     <ClCompile Include="extension.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="model.cpp" />

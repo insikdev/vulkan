@@ -13,14 +13,14 @@ DescriptorPool::~DescriptorPool()
     vkDestroyDescriptorPool(p_device->GetDevice(), m_pool, nullptr);
 }
 
-VkDescriptorSet DescriptorPool::AllocateDescriptorSet(const std::vector<VkDescriptorSetLayout>& layouts)
+VkDescriptorSet DescriptorPool::AllocateDescriptorSet(const VkDescriptorSetLayout& layout)
 {
     VkDescriptorSetAllocateInfo allocInfo {};
     {
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = m_pool;
-        allocInfo.descriptorSetCount = static_cast<uint32_t>(layouts.size());
-        allocInfo.pSetLayouts = layouts.data();
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.pSetLayouts = &layout;
     }
 
     VkDescriptorSet descriptorSet;

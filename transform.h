@@ -31,7 +31,7 @@ public:
     }
 
 public:
-    const float rotation_speed = 0.1f;
+    const float rotation_speed = 100.0f;
     Vec3 m_scale { Vec3 { 1.0f } };
     Vec3 m_rotation { Vec3 { 0.0f } };
     Vec3 m_position { Vec3 { 0.0f } };

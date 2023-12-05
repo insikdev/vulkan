@@ -5,29 +5,16 @@
 #include "vk_command_buffer.h"
 #include "query.h"
 
-uint32_t Buffer::s_count = 0;
-CommandPool* Buffer::s_pool = nullptr;
-
 Buffer::Buffer(const Device* pDevice, VkBufferCreateInfo createInfo, VkMemoryPropertyFlags memoryPropertyFlags)
     : Resource { pDevice }
     , m_size { createInfo.size }
 {
-    if (s_count == 0) {
-        s_pool = new CommandPool(pDevice);
-    }
-
     CreateBuffer(createInfo, memoryPropertyFlags);
-    s_count++;
 }
 
 Buffer::~Buffer()
 {
     vkDestroyBuffer(p_device->GetDevice(), m_buffer, nullptr);
-
-    s_count--;
-    if (s_count == 0) {
-        delete s_pool;
-    }
 }
 
 void Buffer::CreateBuffer(VkBufferCreateInfo createInfo, VkMemoryPropertyFlags memoryPropertyFlags)

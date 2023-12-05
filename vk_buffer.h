@@ -2,7 +2,6 @@
 
 #include "vk_resource.h"
 class Device;
-class CommandPool;
 
 class Buffer : public Resource {
 public:
@@ -32,8 +31,4 @@ private:
     VkDeviceSize m_size;
     VkBuffer m_buffer;
     void* p_host;
-
-private:
-    static uint32_t s_count;
-    static CommandPool* s_pool;
 };

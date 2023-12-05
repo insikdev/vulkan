@@ -79,6 +79,9 @@
     <ClCompile Include="vk_resource.cpp">
       <Filter>Source Files\vulkan wrapper</Filter>
     </ClCompile>
+    <ClCompile Include="camera.cpp">
+      <Filter>Source Files\renderer</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include=".clang-format" />

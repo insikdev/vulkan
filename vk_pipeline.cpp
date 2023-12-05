@@ -34,57 +34,62 @@ void Pipeline::UpdateSwapChain(const SwapChain* pSwapChain)
 
 void Pipeline::CreateDescriptorSetLayout()
 {
-    std::vector<VkDescriptorSetLayoutBinding> layoutBindings;
-
-    VkDescriptorSetLayoutBinding modelBinding {};
+    std::array<VkDescriptorSetLayoutBinding, 2> modelDescriptorSetLayoutBinding {};
     {
-        modelBinding.binding = 0;
-        modelBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        modelBinding.descriptorCount = 1;
-        modelBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        modelDescriptorSetLayoutBinding[0].binding = 0;
+        modelDescriptorSetLayoutBinding[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        modelDescriptorSetLayoutBinding[0].descriptorCount = 1;
+        modelDescriptorSetLayoutBinding[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        modelDescriptorSetLayoutBinding[1].binding = 1;
+        modelDescriptorSetLayoutBinding[1].descriptorCount = 1;
+        modelDescriptorSetLayoutBinding[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        modelDescriptorSetLayoutBinding[1].stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
     }
 
-    layoutBindings.push_back(modelBinding);
-
-    VkDescriptorSetLayoutBinding samplerLayoutBinding {};
+    VkDescriptorSetLayoutCreateInfo modelDescriptorSetLayoutCreateInfo { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
     {
-        samplerLayoutBinding.binding = 1;
-        samplerLayoutBinding.descriptorCount = 1;
-        samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        samplerLayoutBinding.pImmutableSamplers = nullptr;
-        samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        modelDescriptorSetLayoutCreateInfo.bindingCount = static_cast<uint32_t>(modelDescriptorSetLayoutBinding.size());
+        modelDescriptorSetLayoutCreateInfo.pBindings = modelDescriptorSetLayoutBinding.data();
     }
 
-    layoutBindings.push_back(samplerLayoutBinding);
+    VkDescriptorSetLayout modelDescriptorSetLayout;
+    CHECK_VK(vkCreateDescriptorSetLayout(p_device->GetDevice(), &modelDescriptorSetLayoutCreateInfo, nullptr, &modelDescriptorSetLayout));
+    m_descriptorSetLayouts.push_back(modelDescriptorSetLayout);
 
-    VkDescriptorSetLayoutCreateInfo layoutInfo {};
+    std::array<VkDescriptorSetLayoutBinding, 1> commonDescriptorSetLayoutBinding {};
     {
-        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount = static_cast<uint32_t>(layoutBindings.size());
-        layoutInfo.pBindings = layoutBindings.data();
+        commonDescriptorSetLayoutBinding[0].binding = 0;
+        commonDescriptorSetLayoutBinding[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        commonDescriptorSetLayoutBinding[0].descriptorCount = 1;
+        commonDescriptorSetLayoutBinding[0].stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     }
 
-    VkDescriptorSetLayout setLayout;
+    VkDescriptorSetLayoutCreateInfo commonDescriptorSetLayoutCreateInfo { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO };
+    {
+        commonDescriptorSetLayoutCreateInfo.bindingCount = static_cast<uint32_t>(commonDescriptorSetLayoutBinding.size());
+        commonDescriptorSetLayoutCreateInfo.pBindings = commonDescriptorSetLayoutBinding.data();
+    }
 
-    VkResult result = vkCreateDescriptorSetLayout(p_device->GetDevice(), &layoutInfo, nullptr, &setLayout);
-    CHECK_VK(result);
-
-    m_descriptorSetLayouts.push_back(setLayout);
+    VkDescriptorSetLayout commonDescriptorSetLayout;
+    CHECK_VK(vkCreateDescriptorSetLayout(p_device->GetDevice(), &commonDescriptorSetLayoutCreateInfo, nullptr, &commonDescriptorSetLayout));
+    m_descriptorSetLayouts.push_back(commonDescriptorSetLayout);
 }
 
 void Pipeline::CreatePipelineLayout()
 {
-    VkPushConstantRange pushConstant {};
-    {
-        pushConstant.size = sizeof(CameraUniform);
-        pushConstant.offset = 0;
-        pushConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    }
+    // VkPushConstantRange pushConstant {};
+    //{
+    //     pushConstant.size = sizeof(Mat4);
+    //     pushConstant.offset = 0;
+    //     pushConstant.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    // }
 
     VkPipelineLayoutCreateInfo createInfo { VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
     {
-        createInfo.pushConstantRangeCount = 1;
-        createInfo.pPushConstantRanges = &pushConstant;
+        createInfo.pushConstantRangeCount = 0;
+        // createInfo.pushConstantRangeCount = 1;
+        // createInfo.pPushConstantRanges = &pushConstant;
         createInfo.setLayoutCount = static_cast<uint32_t>(m_descriptorSetLayouts.size());
         createInfo.pSetLayouts = m_descriptorSetLayouts.data();
     }

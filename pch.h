@@ -71,10 +71,23 @@ struct MeshData {
 };
 
 struct CameraUniform {
-    alignas(16) glm::mat4 view;
-    alignas(16) glm::mat4 proj;
+    alignas(16) Mat4 view;
+    alignas(16) Mat4 proj;
 };
 
 struct ModelUniform {
-    alignas(16) glm::mat4 world;
+    alignas(16) Mat4 world;
+};
+
+struct PhongModel : ModelUniform {
+    Vec3 ambient;
+    Vec3 diffuse;
+    Vec3 specular;
+    float shininess;
+};
+
+struct LightUniform {
+    Vec3 pos;
+    Vec3 dir;
+    Vec3 color;
 };
